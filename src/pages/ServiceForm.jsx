@@ -125,7 +125,6 @@ export default function ServiceForm() {
       ctx.fillStyle = '#FFFFFF'
       ctx.fillRect(0, 0, inlineCanvas.width, inlineCanvas.height)
       
-      // Draw at original size without scaling to prevent compression
       const x = Math.max(0, (inlineCanvas.width - img.width) / 2)
       const y = Math.max(0, (inlineCanvas.height - img.height) / 2)
       
@@ -191,7 +190,6 @@ export default function ServiceForm() {
       const dataUrl = modalCanvas.toDataURL('image/png')
       setSignatureData(dataUrl)
       
-      // Resize inline canvas to match modal canvas dimensions to prevent compression
       const inlineCanvas = inlineCanvasRef.current
       if (inlineCanvas) {
         inlineCanvas.width = modalCanvas.width
@@ -297,11 +295,11 @@ export default function ServiceForm() {
             </div>
             <div>
               <label className="block text-[11px] md:text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Date of Activity</label>
-              <input type="date" value={dateOfActivity} onChange={e => setDateOfActivity(e.target.value)} className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-maroon/10 focus:border-maroon outline-none bg-gray-50/80 focus:bg-white box-border transition-all" />
+              <input type="date" value={dateOfActivity} onChange={e => setDateOfActivity(e.target.value)} className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-maroon/10 focus:border-maroon outline-none bg-gray-50/80 focus:bg-white box-border transition-all min-w-0" />
             </div>
             <div>
               <label className="block text-[11px] md:text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Date</label>
-              <input type="date" className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-maroon/10 focus:border-maroon outline-none bg-gray-50/80 focus:bg-white box-border transition-all" />
+              <input type="date" className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-maroon/10 focus:border-maroon outline-none bg-gray-50/80 focus:bg-white box-border transition-all min-w-0" />
             </div>
           </div>
 
@@ -473,6 +471,11 @@ export default function ServiceForm() {
           .signature-toolbar { height: 50px; min-height: 50px; padding: 0 10px; }
           .signature-canvas-container { padding: 6px; }
           .signature-canvas { border-radius: 8px; }
+          input[type="date"] {
+            min-width: 0 !important;
+            width: 100% !important;
+            font-size: 13px !important;
+          }
         }
         @media (prefers-reduced-motion: reduce) {
           .service-droplet { animation: none !important; }
