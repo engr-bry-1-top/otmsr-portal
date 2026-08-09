@@ -295,11 +295,21 @@ export default function ServiceForm() {
             </div>
             <div>
               <label className="block text-[11px] md:text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Date of Activity</label>
-              <input type="date" value={dateOfActivity} onChange={e => setDateOfActivity(e.target.value)} className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-maroon/10 focus:border-maroon outline-none bg-gray-50/80 focus:bg-white box-border transition-all min-w-0" />
+              <input 
+                type="date" 
+                value={dateOfActivity} 
+                onChange={e => setDateOfActivity(e.target.value)} 
+                className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-maroon/10 focus:border-maroon outline-none bg-gray-50/80 focus:bg-white box-border transition-all"
+                style={{ minWidth: 0, maxWidth: '100%', WebkitAppearance: 'none' }}
+              />
             </div>
             <div>
               <label className="block text-[11px] md:text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Date</label>
-              <input type="date" className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-maroon/10 focus:border-maroon outline-none bg-gray-50/80 focus:bg-white box-border transition-all min-w-0" />
+              <input 
+                type="date" 
+                className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-maroon/10 focus:border-maroon outline-none bg-gray-50/80 focus:bg-white box-border transition-all"
+                style={{ minWidth: 0, maxWidth: '100%', WebkitAppearance: 'none' }}
+              />
             </div>
           </div>
 
@@ -471,10 +481,18 @@ export default function ServiceForm() {
           .signature-toolbar { height: 50px; min-height: 50px; padding: 0 10px; }
           .signature-canvas-container { padding: 6px; }
           .signature-canvas { border-radius: 8px; }
+          
           input[type="date"] {
             min-width: 0 !important;
+            max-width: 100% !important;
             width: 100% !important;
             font-size: 13px !important;
+            -webkit-appearance: none !important;
+            appearance: none !important;
+          }
+          
+          input[type="date"]::-webkit-date-and-time-value {
+            text-align: left;
           }
         }
         @media (prefers-reduced-motion: reduce) {
