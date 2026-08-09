@@ -84,11 +84,13 @@ export default function Layout({ children }) {
       )}
 
       <aside 
-        className={`fixed inset-y-0 left-0 z-50 bg-maroon flex flex-col lg:static lg:h-screen transition-transform duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
+        className={`fixed top-0 bottom-0 left-0 z-50 bg-maroon flex flex-col lg:static lg:h-screen ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
         style={{ 
           width: sidebarCollapsed ? '64px' : '240px',
           transition: 'width 0.25s ease, transform 0.3s ease-in-out',
           minWidth: sidebarCollapsed ? '64px' : '240px',
+          height: '100vh',
+          overflow: 'hidden',
         }}
       >
         <div className={`h-16 flex items-center border-b border-white/10 px-3 flex-shrink-0 ${sidebarCollapsed ? 'justify-center' : 'gap-3 px-5'}`}>
@@ -106,7 +108,7 @@ export default function Layout({ children }) {
           </button>
         </div>
 
-        <nav className="flex-1 py-4 px-3 space-y-1 overflow-hidden">
+        <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
           {navItems.map(item => (
             <Link key={item.path} to={item.path} onClick={() => setSidebarOpen(false)} title={sidebarCollapsed ? item.label : ''}
               className={`flex items-center gap-3 rounded-lg text-sm font-medium ${sidebarCollapsed ? 'justify-center px-2 py-3' : 'px-3 py-2.5'} ${isActive(item.path) ? 'bg-white text-maroon shadow-lg' : 'text-white/60 hover:bg-white/10 hover:text-white'}`}>
