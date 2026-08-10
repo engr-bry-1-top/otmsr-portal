@@ -7,24 +7,14 @@ export default function CallingCard() {
   const frontRef = useRef(null)
   const backRef = useRef(null)
   const [user, setUser] = useState(null)
-  const [mobile, setMobile] = useState('')
-  const [email, setEmail] = useState('')
   const [flipped, setFlipped] = useState(false)
   const [enlarged, setEnlarged] = useState(false)
 
   useEffect(() => {
     const stored = localStorage.getItem('otmsr_user')
     if (!stored) { navigate('/'); return }
-    const userData = JSON.parse(stored)
-    setUser(userData)
-    const saved = localStorage.getItem(`card_${userData.username}`)
-    if (saved) { const c = JSON.parse(saved); setMobile(c.mobile || ''); setEmail(c.email || '') }
+    setUser(JSON.parse(stored))
   }, [navigate])
-
-  const handleSave = () => {
-    if (!user) return
-    localStorage.setItem(`card_${user.username}`, JSON.stringify({ mobile, email }))
-  }
 
   const downloadCard = async () => {
     const { toPng } = await import('html-to-image')
@@ -57,8 +47,8 @@ export default function CallingCard() {
             <p className="text-gray-500 uppercase tracking-wider" style={{ fontSize: `${10*s}px` }}>{user.role}</p>
           </div>
           <div style={{ fontSize: `${11*s}px` }} className="text-gray-600">
-            {mobile && <p className="m-0">{mobile}</p>}
-            {email && <p className="m-0">{email}</p>}
+            <p className="m-0">Tel: (02) 7501 247 / (02) 7799 6805</p>
+            <p className="m-0">Email: engineering_services@onetopresources.com</p>
             <p className="text-maroon font-semibold mt-1" style={{ fontSize: `${9*s}px` }}>www.onetopresources.com</p>
           </div>
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-r from-maroon via-maroon-light to-navy" style={{ height: `${3*s}px` }} />
@@ -78,7 +68,7 @@ export default function CallingCard() {
           <p className="text-gray-400 font-semibold uppercase whitespace-nowrap overflow-hidden text-ellipsis max-w-full" style={{ fontSize: `${4.5*s}px` }}>
             LA Fratelli Bldg. 1, 7 Calderon St., Brgy. Marilag Project 4, Quezon City, Metro Manila, Philippines 1109
           </p>
-          <p className="text-gray-400 whitespace-nowrap" style={{ fontSize: `${4.5*s}px` }}>TEL: 63-2-5012247 | onetop.dohengineer@gmail.com</p>
+          <p className="text-gray-400 whitespace-nowrap" style={{ fontSize: `${4.5*s}px` }}>TEL: (02) 7501 247 / (02) 7799 6805</p>
           <div className="flex flex-col items-center" style={{ gap: `${4*s}px` }}>
             <img src="/images/qr.png" alt="" className="bg-white" style={{ width: `${qr}px`, height: `${qr}px`, borderRadius: `${8*s}px`, border: `${2*s}px solid #f0f0f0`, padding: `${3*s}px` }} />
             <p className="text-maroon font-bold uppercase tracking-widest" style={{ fontSize: `${11*s}px` }}>Scan Me</p>
@@ -125,20 +115,22 @@ export default function CallingCard() {
             </div>
           </div>
           <div className="grid grid-cols-3 gap-2" style={{ maxWidth: `${cw}px`, margin: '0 auto' }}>
-            <button onClick={() => setFlipped(!flipped)} className="flex items-center justify-center gap-1 py-2 bg-navy text-white rounded-xl text-xs md:text-sm font-medium"><RefreshCw size={14} /> Flip</button>
-            <button onClick={() => setEnlarged(true)} className="flex items-center justify-center gap-1 py-2 bg-white text-maroon border-2 border-maroon rounded-xl text-xs md:text-sm font-medium"><Maximize2 size={14} /> Enlarge</button>
-            <button onClick={downloadCard} className="flex items-center justify-center gap-1 py-2 bg-maroon text-white rounded-xl text-xs md:text-sm font-medium"><Download size={14} /> Download</button>
+            <button onClick={() => setFlipped(!flipped)} className="flex items-center justify-center gap-1 py-2 bg-navy text-white rounded-xl text-xs md:text-sm font-medium hover:bg-navy-light transition-colors"><RefreshCw size={14} /> Flip</button>
+            <button onClick={() => setEnlarged(true)} className="flex items-center justify-center gap-1 py-2 bg-white text-maroon border-2 border-maroon rounded-xl text-xs md:text-sm font-medium hover:bg-maroon/5 transition-colors"><Maximize2 size={14} /> Enlarge</button>
+            <button onClick={downloadCard} className="flex items-center justify-center gap-1 py-2 bg-maroon text-white rounded-xl text-xs md:text-sm font-medium hover:bg-maroon-dark transition-colors"><Download size={14} /> Download</button>
           </div>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-100 p-4 md:p-6">
-          <h3 className="font-semibold text-gray-900 mb-4">Contact Details</h3>
+          <h3 className="font-semibold text-gray-900 mb-4">Card Information</h3>
           <div className="space-y-3 md:space-y-4">
             <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Full Name</label><input type="text" value={user.full_name} disabled className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl bg-gray-100 text-gray-500 outline-none" /></div>
             <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Role</label><input type="text" value={user.role} disabled className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl bg-gray-100 text-gray-500 outline-none" /></div>
-            <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Mobile Number</label><input type="text" value={mobile} onChange={e => setMobile(e.target.value)} placeholder="+63 9XX XXX XXXX" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-maroon/10 focus:border-maroon outline-none bg-gray-50" /></div>
-            <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Email</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="your@email.com" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-maroon/10 focus:border-maroon outline-none bg-gray-50" /></div>
-            <button onClick={handleSave} className="w-full py-2 bg-maroon text-white rounded-xl text-sm font-medium hover:bg-maroon-dark transition-colors">Save Card</button>
+            <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+              <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-2">Company Contact (Fixed)</p>
+              <p className="text-sm text-gray-700">Tel: (02) 7501 247 / (02) 7799 6805</p>
+              <p className="text-sm text-gray-700 mt-1">Email: engineering_services@onetopresources.com</p>
+            </div>
           </div>
         </div>
       </div>

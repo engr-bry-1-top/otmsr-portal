@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Upload, ZoomIn, ZoomOut, RotateCw, Trash2, User } from 'lucide-react'
+import { Upload, ZoomIn, ZoomOut, RotateCw, Trash2, User, Lock } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 export default function Profile() {
@@ -18,6 +18,15 @@ export default function Profile() {
   const [panStart, setPanStart] = useState({ x: 0, y: 0 })
   const imageRef = useRef(null)
   const CANVAS_SIZE = 280
+
+  // Password change state
+  const [showPasswordForm, setShowPasswordForm] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordError, setPasswordError] = useState('')
+  const [passwordSuccess, setPasswordSuccess] = useState('')
+  const [changingPassword, setChangingPassword] = useState(false)
 
   useEffect(() => {
     const stored = localStorage.getItem('otmsr_user')
@@ -73,6 +82,61 @@ export default function Profile() {
     setAvatar(null); imageRef.current = null; setShowEditor(false)
   }
 
+  const handleChangePassword = async () => {
+    setPasswordError('')
+    setPasswordSuccess('')
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPasswordError('All fields are required.')
+      return
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError('New passwords do not match.')
+      return
+    }
+
+    if (newPassword.length < 4) {
+      setPasswordError('Password must be at least 4 characters.')
+      return
+    }
+
+    setChangingPassword(true)
+
+    const { data, error: checkError } = await supabase
+      .from('profiles')
+      .select('password')
+      .eq('username', user.username)
+      .eq('password', currentPassword)
+      .single()
+
+    if (checkError || !data) {
+      setPasswordError('Current password is incorrect.')
+      setChangingPassword(false)
+      return
+    }
+
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ password: newPassword })
+      .eq('username', user.username)
+
+    if (updateError) {
+      setPasswordError('Failed to update password.')
+    } else {
+      setPasswordSuccess('Password changed successfully!')
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+      setTimeout(() => {
+        setShowPasswordForm(false)
+        setPasswordSuccess('')
+      }, 2000)
+    }
+
+    setChangingPassword(false)
+  }
+
   if (!user) return null
 
   return (
@@ -92,26 +156,60 @@ export default function Profile() {
           <div className="space-y-2">
             <button onClick={() => fileInputRef.current?.click()} className="w-full py-2 bg-maroon text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2"><Upload size={15} /> Upload Photo</button>
             {avatar && <button onClick={handleRemove} className="w-full py-2 bg-white text-red-600 border border-red-200 rounded-xl text-sm font-medium flex items-center justify-center gap-2"><Trash2 size={15} /> Remove</button>}
+            <button onClick={() => setShowPasswordForm(!showPasswordForm)} className="w-full py-2 bg-navy text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2"><Lock size={15} /> Change Password</button>
           </div>
           <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
           {error && <div className="mt-4 bg-red-50 border border-red-100 rounded-xl p-3 text-sm text-red-600">{error}</div>}
           {success && <div className="mt-4 bg-maroon/5 border border-maroon/10 rounded-xl p-3 text-sm text-maroon">✓ Avatar saved</div>}
         </div>
 
-        <div className="md:col-span-2 bg-white rounded-xl border border-gray-100 p-6">
-          <h3 className="font-semibold text-gray-900 mb-4">Account Information</h3>
-          <div className="space-y-3">
-            {[
-              { label: 'Full Name', value: user.full_name },
-              { label: 'Role', value: user.role },
-              { label: 'Username', value: user.username },
-            ].map((r, i) => (
-              <div key={i} className="flex justify-between items-center pb-3 border-b border-gray-50 last:border-0 last:pb-0">
-                <span className="text-[10px] md:text-xs font-semibold text-gray-500 uppercase tracking-wider">{r.label}</span>
-                <span className="text-xs md:text-sm text-gray-700 font-medium">{r.value}</span>
-              </div>
-            ))}
+        <div className="md:col-span-2 space-y-6">
+          <div className="bg-white rounded-xl border border-gray-100 p-6">
+            <h3 className="font-semibold text-gray-900 mb-4">Account Information</h3>
+            <div className="space-y-3">
+              {[
+                { label: 'Full Name', value: user.full_name },
+                { label: 'Role', value: user.role },
+                { label: 'Username', value: user.username },
+              ].map((r, i) => (
+                <div key={i} className="flex justify-between items-center pb-3 border-b border-gray-50 last:border-0 last:pb-0">
+                  <span className="text-[10px] md:text-xs font-semibold text-gray-500 uppercase tracking-wider">{r.label}</span>
+                  <span className="text-xs md:text-sm text-gray-700 font-medium">{r.value}</span>
+                </div>
+              ))}
+            </div>
           </div>
+
+          {showPasswordForm && (
+            <div className="bg-white rounded-xl border border-gray-100 p-6">
+              <h3 className="font-semibold text-gray-900 mb-4">Change Password</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-[10px] md:text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Current Password</label>
+                  <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} placeholder="Enter current password"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none focus:border-maroon" />
+                </div>
+                <div>
+                  <label className="block text-[10px] md:text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">New Password</label>
+                  <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Enter new password"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none focus:border-maroon" />
+                </div>
+                <div>
+                  <label className="block text-[10px] md:text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Confirm New Password</label>
+                  <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Confirm new password"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none focus:border-maroon" />
+                </div>
+
+                {passwordError && <div className="bg-red-50 border border-red-100 rounded-xl p-3 text-sm text-red-600">{passwordError}</div>}
+                {passwordSuccess && <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 text-sm text-emerald-600">{passwordSuccess}</div>}
+
+                <button onClick={handleChangePassword} disabled={changingPassword}
+                  className="w-full py-2 bg-maroon text-white rounded-xl text-sm font-medium hover:bg-maroon-dark disabled:opacity-50">
+                  {changingPassword ? 'Changing...' : 'Change Password'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
