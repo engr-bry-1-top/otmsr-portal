@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { ChevronLeft, ChevronRight, Plus, Save, Trash2, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Save, Trash2, Printer } from 'lucide-react'
 
 const API_URL = 'https://script.google.com/macros/s/AKfycbwhqFi9pK9uzhDCqLc5mVhpokaA9HWB9f1HzQ5wRErTLTK181U4h0IHsqLw-6CWalU/exec'
 
@@ -22,34 +22,37 @@ const SHORT_NAMES = {
 const ADMIN_USERS = ['rob.onetop', 'josh.onetop', 'bry.onetop']
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+const YEARS = ['2024','2025','2026','2027','2028']
 
 export default function COACalendar() {
   const [month, setMonth] = useState('July')
-  const [year] = useState('2026')
+  const [year, setYear] = useState('2026')
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState(null)
   const [isAdmin, setIsAdmin] = useState(false)
 
-  // Edit modal state
   const [editModal, setEditModal] = useState(null)
   const [editText, setEditText] = useState('')
   const [selectedEngs, setSelectedEngs] = useState([])
   const [saving, setSaving] = useState(false)
+  const [savingProgress, setSavingProgress] = useState('')
+  const [deleteMode, setDeleteMode] = useState(false)
+  const [createMonthModal, setCreateMonthModal] = useState(false)
 
   useEffect(() => {
     const stored = localStorage.getItem('otmsr_user')
     if (stored) {
       const user = JSON.parse(stored)
-      setIsAdmin(ADMIN_USERS.includes(user.username))
+      setIsAdmin(user.role === 'admin' || ADMIN_USERS.includes(user.username))
     }
     fetchCOA()
-  }, [month])
+  }, [month, year])
 
   const fetchCOA = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`${API_URL}?api=coa&month=${month}`)
+      const res = await fetch(`${API_URL}?api=coa&month=${encodeURIComponent(month)}`)
       const json = await res.json()
       setData(json)
     } catch (err) { console.error(err) }
@@ -57,22 +60,33 @@ export default function COACalendar() {
   }
 
   const daysInMonth = new Date(parseInt(year), MONTHS.indexOf(month) + 1, 0).getDate()
-  const firstDay = new Date(`${month} 1, ${year}`).getDay()
+  const firstDay = new Date(parseInt(year), MONTHS.indexOf(month), 1).getDay()
+  const trailingCells = (7 - ((firstDay + daysInMonth) % 7)) % 7
+
+  const normalizeName = (name) => {
+    return name?.toUpperCase().replace(/\./g, '').replace(/\s+/g, ' ').trim() || ''
+  }
 
   const getColor = (name) => {
-    const n = name?.toUpperCase().replace(/\./g, '').replace(/\s+/g, ' ').trim()
+    const n = normalizeName(name)
     for (const key in ENGINEER_COLORS) {
-      if (key.toUpperCase().replace(/\./g, '').replace(/\s+/g, ' ').trim() === n) return ENGINEER_COLORS[key]
+      if (normalizeName(key) === n) return ENGINEER_COLORS[key]
+    }
+    const lastName = n.split(' ').pop()
+    for (const key in ENGINEER_COLORS) {
+      if (normalizeName(key).endsWith(lastName)) return ENGINEER_COLORS[key]
     }
     return '#cccccc'
   }
 
   const getShortName = (name) => {
-    const n = name?.toUpperCase().replace(/\./g, '').replace(/\s+/g, ' ').trim()
+    const n = normalizeName(name)
     for (const key in SHORT_NAMES) {
-      if (key.toUpperCase().replace(/\./g, '').replace(/\s+/g, ' ').trim() === n) return SHORT_NAMES[key]
+      if (normalizeName(key) === n) return SHORT_NAMES[key]
     }
-    return name?.split(' ').pop() || name
+    const parts = name?.split(' ')
+    if (!parts || parts.length < 2) return name
+    return parts[0].charAt(0) + '. ' + parts[parts.length - 1]
   }
 
   const getDayActivities = (day) => {
@@ -89,6 +103,7 @@ export default function COACalendar() {
   }
 
   const openEditModal = (day, existingAct = '', existingEngs = []) => {
+    setDeleteMode(false)
     setEditModal({ day })
     setEditText(existingAct)
     setSelectedEngs(existingEngs)
@@ -99,30 +114,108 @@ export default function COACalendar() {
   }
 
   const saveActivity = async () => {
-    if (!editText.trim() || selectedEngs.length === 0) return
+    if (!editText.trim()) return
     setSaving(true)
+    setSavingProgress('Saving...')
+    
     try {
-      for (const eng of selectedEngs) {
+      // Find engineers currently assigned to THIS activity on THIS day
+      const originallyAssigned = []
+      if (data?.assignments) {
+        data.engineers?.forEach(eng => {
+          const act = data.assignments[eng]?.[String(editModal.day)]
+          if (act === editText) {
+            originallyAssigned.push(eng)
+          }
+        })
+      }
+      
+      // Engineers to keep (still checked)
+      const toKeep = selectedEngs
+      
+      // Engineers to remove (originally assigned but now unchecked)
+      const toRemove = originallyAssigned.filter(e => !toKeep.includes(e))
+      
+      // Save for checked engineers
+      for (const eng of toKeep) {
         await fetch(`${API_URL}?api=coa_save&month=${encodeURIComponent(month)}&engineer=${encodeURIComponent(eng)}&day=${editModal.day}&activity=${encodeURIComponent(editText)}`)
       }
+      
+      // Clear for unchecked engineers
+      for (const eng of toRemove) {
+        await fetch(`${API_URL}?api=coa_save&month=${encodeURIComponent(month)}&engineer=${encodeURIComponent(eng)}&day=${editModal.day}&activity=`)
+      }
+      
       setEditModal(null)
+      setDeleteMode(false)
       fetchCOA()
     } catch (err) { console.error(err) }
     setSaving(false)
+    setSavingProgress('')
   }
 
-  const deleteActivity = async (day, act, engs) => {
-    if (!confirm(`Delete this activity for ${month} ${day}?`)) return
+  const deleteActivity = async () => {
+    if (selectedEngs.length === 0) return
     setSaving(true)
+    setSavingProgress(`Removing 0/${selectedEngs.length}...`)
+    let completed = 0
     try {
-      for (const eng of engs) {
-        await fetch(`${API_URL}?api=coa_save&month=${encodeURIComponent(month)}&engineer=${encodeURIComponent(eng)}&day=${day}&activity=`)
+      for (const eng of selectedEngs) {
+        await fetch(`${API_URL}?api=coa_save&month=${encodeURIComponent(month)}&engineer=${encodeURIComponent(eng)}&day=${editModal.day}&activity=`)
+        completed++
+        setSavingProgress(`Removing ${completed}/${selectedEngs.length}...`)
       }
-      setExpanded(null)
+      setEditModal(null)
+      setDeleteMode(false)
       fetchCOA()
     } catch (err) { console.error(err) }
     setSaving(false)
+    setSavingProgress('')
   }
+
+  const deleteAllDay = async () => {
+    if (!confirm(`Delete ALL activities for ${month} ${editModal.day}, ${year}? This cannot be undone.`)) return
+    const engineers = data?.engineers || []
+    setSaving(true)
+    setSavingProgress(`Removing 0/${engineers.length}...`)
+    let completed = 0
+    try {
+      for (const eng of engineers) {
+        await fetch(`${API_URL}?api=coa_save&month=${encodeURIComponent(month)}&engineer=${encodeURIComponent(eng)}&day=${editModal.day}&activity=`)
+        completed++
+        setSavingProgress(`Removing ${completed}/${engineers.length}...`)
+      }
+      setEditModal(null)
+      setDeleteMode(false)
+      fetchCOA()
+    } catch (err) { console.error(err) }
+    setSaving(false)
+    setSavingProgress('')
+  }
+
+  const createNextMonth = async () => {
+    const currentIdx = MONTHS.indexOf(month)
+    const nextIdx = (currentIdx + 1) % 12
+    const nextMonth = MONTHS[nextIdx]
+    const nextYear = nextIdx === 0 ? (parseInt(year) + 1).toString() : year
+    setSaving(true)
+    setSavingProgress('Creating sheet...')
+    try {
+      const res = await fetch(`${API_URL}?api=coa_create_month&month=${encodeURIComponent(nextMonth)}`)
+      const result = await res.text()
+      if (result === 'OK') {
+        setCreateMonthModal(false)
+        setMonth(nextMonth)
+        if (nextIdx === 0) setYear(nextYear)
+      } else {
+        alert(result)
+      }
+    } catch (err) { console.error(err) }
+    setSaving(false)
+    setSavingProgress('')
+  }
+
+  const handlePrint = () => window.print()
 
   if (loading) return (
     <div className="flex justify-center py-20">
@@ -137,10 +230,24 @@ export default function COACalendar() {
         <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#800000', margin: 0 }}>
           📅 Calendar of Activities
         </h2>
-        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          {isAdmin && (
+            <button onClick={() => setCreateMonthModal(true)}
+              style={{ background: '#800000', color: '#fff', padding: '0.35rem 0.7rem', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer', border: 'none', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+              <Plus size={14} /> Create Next Month
+            </button>
+          )}
+          <button onClick={handlePrint}
+            style={{ background: '#fff', color: '#800000', border: '1.5px solid #800000', padding: '0.35rem 0.7rem', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+            <Printer size={14} /> PDF
+          </button>
           <select value={month} onChange={e => setMonth(e.target.value)}
             style={{ padding: '0.35rem 0.6rem', border: '1.5px solid #E5E5E5', borderRadius: '6px', fontSize: '0.75rem', background: '#fff', cursor: 'pointer' }}>
             {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+          <select value={year} onChange={e => setYear(e.target.value)}
+            style={{ padding: '0.35rem 0.6rem', border: '1.5px solid #E5E5E5', borderRadius: '6px', fontSize: '0.75rem', background: '#fff', cursor: 'pointer' }}>
+            {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
           <button onClick={() => { const i = MONTHS.indexOf(month); if (i > 0) setMonth(MONTHS[i-1]) }}
             style={{ background: '#fff', color: '#800000', border: '1.5px solid #800000', padding: '0.35rem 0.5rem', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer' }}>
@@ -197,6 +304,7 @@ export default function COACalendar() {
                 background: isWeekend ? '#FAFAFA' : '#fff',
                 fontSize: '0.5rem', position: 'relative',
                 overflow: 'hidden',
+                cursor: isAdmin ? 'pointer' : 'default',
               }}
               onClick={() => isAdmin && openEditModal(day)}>
                 <span style={{
@@ -238,7 +346,7 @@ export default function COACalendar() {
             )
           })}
 
-          {Array.from({ length: (7 - ((firstDay + daysInMonth) % 7)) % 7 }).map((_, i) => (
+          {Array.from({ length: isNaN(trailingCells) ? 0 : trailingCells }).map((_, i) => (
             <div key={`trailing-${i}`} style={{
               background: '#F0F0F0', borderBottom: '1px solid #E5E5E5',
               borderLeft: '1px solid #E5E5E5', minHeight: '100px',
@@ -277,53 +385,125 @@ export default function COACalendar() {
         <div style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
           zIndex: 9998, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '1rem',
-        }} onClick={() => setEditModal(null)}>
+        }} onClick={() => { setEditModal(null); setDeleteMode(false) }}>
           <div style={{
             background: '#fff', borderRadius: '12px', padding: '1.5rem',
             width: '500px', maxWidth: '90%', maxHeight: '80vh', overflowY: 'auto',
             boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
           }} onClick={e => e.stopPropagation()}>
             <h3 style={{ fontSize: '0.9rem', color: '#800000', marginBottom: '0.5rem' }}>
-              {editText ? 'Edit Activity' : 'Add Activity'}
+              {deleteMode ? 'Delete Activity' : editText ? 'Edit Activity' : 'Add Activity'}
             </h3>
             <p style={{ fontSize: '0.7rem', color: '#737373', marginBottom: '0.75rem' }}>
               {month} {editModal.day}, {year}
             </p>
 
-            <label style={{ fontSize: '0.7rem', fontWeight: 600, color: '#737373', display: 'block', marginBottom: '0.25rem' }}>Assign Engineers:</label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginBottom: '0.75rem', maxHeight: '150px', overflowY: 'auto' }}>
-              {data?.engineers?.map(eng => (
-                <label key={eng} onClick={() => toggleEngineer(eng)} style={{
-                  display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.7rem',
-                  padding: '0.2rem 0.4rem', borderRadius: '4px', cursor: 'pointer',
-                  border: selectedEngs.includes(eng) ? '1px solid #800000' : '1px solid #E5E5E5',
-                  background: selectedEngs.includes(eng) ? '#FDF7F7' : '#fff',
-                  borderLeft: `3px solid ${getColor(eng)}`,
-                }}>
-                  <input type="checkbox" checked={selectedEngs.includes(eng)} onChange={() => {}} style={{ cursor: 'pointer' }} />
-                  {eng}
-                </label>
-              ))}
-            </div>
+            {!deleteMode ? (
+              <>
+                <label style={{ fontSize: '0.7rem', fontWeight: 600, color: '#737373', display: 'block', marginBottom: '0.25rem' }}>Assign Engineers:</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginBottom: '0.75rem', maxHeight: '150px', overflowY: 'auto' }}>
+                  {data?.engineers?.map(eng => (
+                    <label key={eng} onClick={() => toggleEngineer(eng)} style={{
+                      display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.7rem',
+                      padding: '0.2rem 0.4rem', borderRadius: '4px', cursor: 'pointer',
+                      border: selectedEngs.includes(eng) ? '1px solid #800000' : '1px solid #E5E5E5',
+                      background: selectedEngs.includes(eng) ? '#FDF7F7' : '#fff',
+                      borderLeft: `3px solid ${getColor(eng)}`,
+                    }}>
+                      <input type="checkbox" checked={selectedEngs.includes(eng)} onChange={() => {}} style={{ cursor: 'pointer' }} />
+                      {eng}
+                    </label>
+                  ))}
+                </div>
 
-            <label style={{ fontSize: '0.7rem', fontWeight: 600, color: '#737373', display: 'block', marginBottom: '0.25rem' }}>Activity Details:</label>
-            <textarea value={editText} onChange={e => setEditText(e.target.value)}
-              placeholder="e.g., Santa Rosa Laguna - Installation & Demo"
-              style={{ width: '100%', padding: '0.5rem', border: '1.5px solid #E5E5E5', borderRadius: '6px', fontSize: '0.75rem', fontFamily: 'inherit', resize: 'vertical', minHeight: '60px', marginBottom: '0.5rem' }}
-              rows={3} />
+                <label style={{ fontSize: '0.7rem', fontWeight: 600, color: '#737373', display: 'block', marginBottom: '0.25rem' }}>Activity Details:</label>
+                <textarea value={editText} onChange={e => setEditText(e.target.value)}
+                  placeholder="e.g., Santa Rosa Laguna - Installation & Demo"
+                  style={{ width: '100%', padding: '0.5rem', border: '1.5px solid #E5E5E5', borderRadius: '6px', fontSize: '0.75rem', fontFamily: 'inherit', resize: 'vertical', minHeight: '60px', marginBottom: '0.5rem' }}
+                  rows={3} />
+              </>
+            ) : (
+              <>
+                <p style={{ color: '#CC0000', fontWeight: 700, fontSize: '0.85rem', textAlign: 'center', margin: '0.5rem 0' }}>⚠️ This action cannot be undone.</p>
+                <p style={{ color: '#B45309', fontSize: '0.7rem', textAlign: 'center', margin: '0.5rem 0', fontWeight: 600 }}>
+                  Select engineers to remove from this schedule, or use "Delete All" to clear the entire day.
+                </p>
+                <label style={{ fontSize: '0.7rem', fontWeight: 600, color: '#737373', display: 'block', marginBottom: '0.25rem' }}>Select engineers to remove:</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginBottom: '0.75rem', maxHeight: '150px', overflowY: 'auto' }}>
+                  {data?.engineers?.map(eng => (
+                    <label key={eng} onClick={() => toggleEngineer(eng)} style={{
+                      display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.7rem',
+                      padding: '0.2rem 0.4rem', borderRadius: '4px', cursor: 'pointer',
+                      border: selectedEngs.includes(eng) ? '1px solid #CC0000' : '1px solid #E5E5E5',
+                      background: selectedEngs.includes(eng) ? '#FEF2F2' : '#fff',
+                      borderLeft: `3px solid ${getColor(eng)}`,
+                    }}>
+                      <input type="checkbox" checked={selectedEngs.includes(eng)} onChange={() => {}} style={{ cursor: 'pointer' }} />
+                      {eng}
+                    </label>
+                  ))}
+                </div>
+              </>
+            )}
 
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.75rem', flexWrap: 'wrap' }}>
-              <button onClick={() => setEditModal(null)}
-                style={{ background: '#fff', color: '#737373', border: '1.5px solid #E5E5E5', padding: '0.35rem 0.7rem', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-              {editText && (
-                <button onClick={() => { deleteActivity(editModal.day, editText, selectedEngs); setEditModal(null) }}
+              <button onClick={() => { setEditModal(null); setDeleteMode(false) }}
+                style={{ background: '#fff', color: '#737373', border: '1.5px solid #E5E5E5', padding: '0.35rem 0.7rem', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer' }}>
+                {deleteMode ? 'Go Back' : 'Cancel'}
+              </button>
+
+              {!deleteMode && editText && (
+                <button onClick={() => setDeleteMode(true)}
                   style={{ background: '#CC0000', color: '#fff', padding: '0.35rem 0.7rem', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer', border: 'none', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                   <Trash2 size={14} /> Delete
                 </button>
               )}
-              <button onClick={saveActivity} disabled={saving}
-                style={{ background: '#800000', color: '#fff', padding: '0.35rem 0.7rem', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer', border: 'none', display: 'flex', alignItems: 'center', gap: '0.3rem', opacity: saving ? 0.6 : 1 }}>
-                <Save size={14} /> {saving ? 'Saving...' : 'Save'}
+
+              {deleteMode && (
+                <>
+                  <button onClick={deleteActivity} disabled={selectedEngs.length === 0}
+                    style={{ background: '#B45309', color: '#fff', padding: '0.35rem 0.7rem', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer', border: 'none', opacity: selectedEngs.length === 0 ? 0.5 : 1 }}>
+                    Delete Selected
+                  </button>
+                  <button onClick={deleteAllDay}
+                    style={{ background: '#CC0000', color: '#fff', padding: '0.35rem 0.7rem', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer', border: 'none' }}>
+                    Delete All
+                  </button>
+                </>
+              )}
+
+              {!deleteMode && (
+                <button onClick={saveActivity} disabled={saving}
+                  style={{ background: '#800000', color: '#fff', padding: '0.35rem 0.7rem', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer', border: 'none', display: 'flex', alignItems: 'center', gap: '0.3rem', opacity: saving ? 0.6 : 1 }}>
+                  <Save size={14} /> {saving ? 'Saving...' : 'Save'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Month Modal */}
+      {createMonthModal && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+          zIndex: 9998, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '1rem',
+        }} onClick={() => setCreateMonthModal(false)}>
+          <div style={{
+            background: '#fff', borderRadius: '12px', padding: '1.5rem',
+            maxWidth: '400px', width: '90%', textAlign: 'center',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
+          }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ fontSize: '0.9rem', color: '#800000', marginBottom: '0.75rem' }}>Create New Month</h3>
+            <p style={{ fontSize: '0.75rem', color: '#737373', marginBottom: '1rem' }}>
+              Create a new sheet for <strong>{MONTHS[(MONTHS.indexOf(month) + 1) % 12]} {MONTHS.indexOf(month) === 11 ? parseInt(year) + 1 : year}</strong>?
+            </p>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+              <button onClick={() => setCreateMonthModal(false)}
+                style={{ background: '#fff', color: '#737373', border: '1.5px solid #E5E5E5', padding: '0.35rem 0.7rem', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+              <button onClick={createNextMonth}
+                style={{ background: '#800000', color: '#fff', padding: '0.35rem 0.7rem', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer', border: 'none' }}>
+                Create
               </button>
             </div>
           </div>
@@ -334,7 +514,7 @@ export default function COACalendar() {
       {saving && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(255,255,255,0.7)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: '0.75rem' }}>
           <div style={{ width: '40px', height: '40px', border: '3px solid #E5E5E5', borderTop: '3px solid #800000', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
-          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#800000' }}>Saving...</span>
+          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#800000' }}>{savingProgress || 'Saving...'}</span>
         </div>
       )}
 
