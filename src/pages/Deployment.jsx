@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { BarChart3, TrendingUp, Package, Clock, AlertTriangle, CheckCircle2, Truck, Trophy, Printer } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbw4ynbFVJ4I17WuesGrOSGDunS217pEYuJRz-Hfmqd0z4bT7uTIWI36ERmM_bumrC7h/exec?api=deployment'
+const API_URL = 'https://script.google.com/macros/s/AKfycbwhqFi9pK9uzhDCqLc5mVhpokaA9HWB9f1HzQ5wRErTLTK181U4h0IHsqLw-6CWalU/exec?api=deployment'
 
 const COLORS = ['#800000', '#4A0000', '#A52A2A', '#D4A0A0', '#2D2D2D', '#666666', '#999999', '#B91C1C', '#15803D', '#1D4ED8']
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']

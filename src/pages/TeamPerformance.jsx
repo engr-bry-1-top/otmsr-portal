@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { TrendingUp, Target, BarChart3, Trophy } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts'
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbw4ynbFVJ4I17WuesGrOSGDunS217pEYuJRz-Hfmqd0z4bT7uTIWI36ERmM_bumrC7h/exec'
+const API_URL = 'https://script.google.com/macros/s/AKfycbwhqFi9pK9uzhDCqLc5mVhpokaA9HWB9f1HzQ5wRErTLTK181U4h0IHsqLw-6CWalU/exec'
 
 const COLORS = ['#800000', '#1E3A5F', '#15803D', '#B45309', '#6B6B6B', '#9B1B30', '#2D2D2D', '#4A4A4A']
 

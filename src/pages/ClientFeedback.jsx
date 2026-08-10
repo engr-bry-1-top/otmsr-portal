@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Star, TrendingUp, Users, Building2 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbw4ynbFVJ4I17WuesGrOSGDunS217pEYuJRz-Hfmqd0z4bT7uTIWI36ERmM_bumrC7h/exec'
+const API_URL = 'https://script.google.com/macros/s/AKfycbwhqFi9pK9uzhDCqLc5mVhpokaA9HWB9f1HzQ5wRErTLTK181U4h0IHsqLw-6CWalU/exec'
 
 const COLORS = ['#15803D', '#1D4ED8', '#B45309', '#B91C1C', '#7F1D1D', '#800000']
 const WEIGHTS = { 'Very Satisfied': 1.0, 'Satisfied': 0.75, 'Neutral': 0.50, 'Unsatisfied': 0.25, 'Very Unsatisfied': 0.0 }
