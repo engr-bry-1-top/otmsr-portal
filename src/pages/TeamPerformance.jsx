@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { TrendingUp, Target, BarChart3, Trophy } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts'
+import { supabase } from '../lib/supabase'
 
 const API_URL = 'https://script.google.com/macros/s/AKfycbwhqFi9pK9uzhDCqLc5mVhpokaA9HWB9f1HzQ5wRErTLTK181U4h0IHsqLw-6CWalU/exec'
 
@@ -12,8 +13,29 @@ export default function TeamPerformance() {
   const [mode, setMode] = useState('Q3')
   const [year, setYear] = useState('2026')
   const [selected, setSelected] = useState(null)
+  const [avatars, setAvatars] = useState({})
 
   useEffect(() => { fetchData() }, [mode, year])
+
+  useEffect(() => {
+    const fetchAvatars = async () => {
+      const { data: profiles } = await supabase.from('profiles').select('username, avatar_url, full_name')
+      if (profiles) {
+        const map = {}
+        profiles.forEach(p => {
+          if (p.avatar_url) {
+            map[p.username] = p.avatar_url
+            // Also map by full name for matching
+            if (p.full_name) {
+              map[p.full_name.toUpperCase()] = p.avatar_url
+            }
+          }
+        })
+        setAvatars(map)
+      }
+    }
+    fetchAvatars()
+  }, [])
 
   const fetchData = async () => {
     setLoading(true)
@@ -30,8 +52,32 @@ export default function TeamPerformance() {
     setLoading(false)
   }
 
+  const getAvatarUrl = (engineerName) => {
+    if (!engineerName) return null
+    const engUpper = engineerName.toUpperCase().replace(/\./g, '').replace(/\s+/g, ' ').trim()
+    
+    // Check Supabase avatars first
+    for (const [key, url] of Object.entries(avatars)) {
+      const keyUpper = key.toUpperCase().replace(/\./g, '').replace(/\s+/g, ' ').trim()
+      if (engUpper.includes(keyUpper) || keyUpper.includes(engUpper)) {
+        return url
+      }
+      // Check last name match
+      const engParts = engUpper.split(' ')
+      const keyParts = keyUpper.split(' ')
+      if (engParts.length >= 2 && keyParts.length >= 2) {
+        if (engParts[engParts.length - 1] === keyParts[keyParts.length - 1]) {
+          return url
+        }
+      }
+    }
+    return null
+  }
+
   const eng = selected || {}
   const trend = eng.trendArray || [0, 0, 0, 0]
+  const supabaseAvatar = getAvatarUrl(eng.engineer)
+  const displayAvatar = supabaseAvatar || eng.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(eng.engineer || 'User')}&background=800000&color=fff&bold=true`
 
   const trendData = [
     { quarter: 'Q1', score: trend[0] },
@@ -63,7 +109,6 @@ export default function TeamPerformance() {
 
   return (
     <div>
-      {/* Header with dropdowns */}
       <div className="bg-white rounded-xl border border-gray-100 p-4 mb-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
@@ -87,10 +132,9 @@ export default function TeamPerformance() {
         </div>
       </div>
 
-      {/* Profile + Score */}
       <div className="bg-white rounded-xl border border-gray-100 p-6 mb-6">
         <div className="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
-          <img src={eng.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(eng.engineer || 'User')}&background=800000&color=fff&bold=true`} alt="" className="w-16 h-16 rounded-full object-cover border-2 border-maroon/20 flex-shrink-0" />
+          <img src={displayAvatar} alt="" className="w-16 h-16 rounded-full object-cover border-2 border-maroon/20 flex-shrink-0" />
           <div className="flex-1">
             <h2 className="text-lg font-bold text-gray-900">{eng.engineer}</h2>
             <p className="text-sm text-gray-500">{eng.role || 'Field Implementation'}</p>
@@ -112,7 +156,6 @@ export default function TeamPerformance() {
         </div>
       </div>
 
-      {/* Score Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {componentData.map((c, i) => (
           <div key={i} className="bg-white rounded-xl border border-gray-100 p-4">
@@ -126,7 +169,6 @@ export default function TeamPerformance() {
         ))}
       </div>
 
-      {/* Charts Row 1 - Line + Component Bar */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div className="bg-white rounded-xl border border-gray-100 p-5">
           <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2"><TrendingUp size={16} className="text-maroon" /> Quarterly Trend</h3>
@@ -156,7 +198,6 @@ export default function TeamPerformance() {
         </div>
       </div>
 
-      {/* Charts Row 2 - Radar + Team Comparison */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div className="bg-white rounded-xl border border-gray-100 p-5">
           <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2"><Target size={16} className="text-maroon" /> Performance Radar</h3>

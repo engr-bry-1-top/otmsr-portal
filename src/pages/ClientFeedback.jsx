@@ -12,6 +12,7 @@ export default function ClientFeedback() {
   const [loading, setLoading] = useState(true)
   const [engineerFilter, setEngineerFilter] = useState('All')
   const [satisfactionFilter, setSatisfactionFilter] = useState('All')
+  const [selectedComment, setSelectedComment] = useState(null)
 
   useEffect(() => { fetchData() }, [])
 
@@ -145,7 +146,14 @@ export default function ClientFeedback() {
                   <td className="px-3 md:px-4 py-2 md:py-3 text-sm text-gray-700">{d.facility}</td>
                   <td className="px-3 md:px-4 py-2 md:py-3 text-sm text-gray-700">{d.engineer}</td>
                   <td className="px-3 md:px-4 py-2 md:py-3"><span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${getSatClass(d.satisfaction)}`}>{d.satisfaction}</span></td>
-                  <td className="px-3 md:px-4 py-2 md:py-3 text-sm text-gray-600 max-w-[150px] truncate">{d.comments}</td>
+                  <td className="px-3 md:px-4 py-2 md:py-3 text-sm text-gray-600 max-w-[200px]">
+                    {d.comments && d.comments.length > 50 ? (
+                      <>
+                        {d.comments.slice(0, 50)}...
+                        <button onClick={(e) => { e.stopPropagation(); setSelectedComment(d.comments) }} className="text-maroon text-xs underline ml-1">View</button>
+                      </>
+                    ) : (d.comments || '—')}
+                  </td>
                   <td className="px-3 md:px-4 py-2 md:py-3 text-sm text-gray-500">{d.device}</td>
                 </tr>
               ))}
@@ -156,6 +164,18 @@ export default function ClientFeedback() {
           </table>
         </div>
       </div>
+
+      {selectedComment && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setSelectedComment(null)}>
+          <div className="bg-white rounded-2xl p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900">Comment</h3>
+              <button onClick={() => setSelectedComment(null)} className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center hover:bg-gray-200 text-gray-500">✕</button>
+            </div>
+            <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">{selectedComment}</p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

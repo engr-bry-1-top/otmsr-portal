@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react'
+import { Check, X, UserPlus, CalendarClock } from 'lucide-react'
 
 const API_URL = 'https://script.google.com/macros/s/AKfycbwhqFi9pK9uzhDCqLc5mVhpokaA9HWB9f1HzQ5wRErTLTK181U4h0IHsqLw-6CWalU/exec'
 
 const ENGINEERS = [
-  'All', 'JOSH VELASCO', 'ROB DE LA CRUZ', 'NOWIEL GONZALES', 'KEITH FERN AMOR',
-  'JOHN PAUL BAUTISTA', 'JOHN FELIX ARABIT', 'GERSON SACRAMENTO', 'BRIAN EZEKIEL BATALON', 'REYNALDO T. VILLA'
+  'JOSH VELASCO', 'ROB DE LA CRUZ', 'NOWIEL GONZALES', 'KEITH FERN AMOR',
+  'JOHN PAUL BAUTISTA', 'JOHN FELIX ARABIT', 'GERSON SACRAMENTO',
+  'BRIAN EZEKIEL BATALON', 'REYNALDO T. VILLA'
 ]
+
+const ASSIGN_USERS = ['rob.onetop', 'josh.onetop', 'bry.onetop']
 
 export default function PMSTracker() {
   const [data, setData] = useState([])
@@ -16,7 +20,22 @@ export default function PMSTracker() {
   const [quarter, setQuarter] = useState('Q3')
   const [year, setYear] = useState('2026')
   const [page, setPage] = useState(1)
+  const [canAssign, setCanAssign] = useState(false)
+  const [showAssignModal, setShowAssignModal] = useState(null)
+  const [showDateModal, setShowDateModal] = useState(null)
+  const [selectedEngineers, setSelectedEngineers] = useState([])
+  const [newDate, setNewDate] = useState('')
   const pageSize = 25
+
+  useEffect(() => {
+    const stored = localStorage.getItem('otmsr_user')
+    if (stored) {
+      const user = JSON.parse(stored)
+      setCanAssign(ASSIGN_USERS.includes(user.username))
+    }
+  }, [])
+
+  useEffect(() => { fetchData() }, [engineer, quarter, year])
 
   const fetchData = async () => {
     setLoading(true)
@@ -28,8 +47,6 @@ export default function PMSTracker() {
     } catch (err) { console.error(err) }
     setLoading(false)
   }
-
-  useEffect(() => { fetchData() }, [engineer, quarter, year])
 
   let filtered = data
   if (pmsSlot !== 'All') filtered = filtered.filter(r => r.pmsSlot === parseInt(pmsSlot))
@@ -50,6 +67,56 @@ export default function PMSTracker() {
     return 'bg-amber-50 text-amber-700'
   }
 
+  const openAssignModal = (rowIndex, slot) => {
+    setSelectedEngineers([])
+    setShowAssignModal({ rowIndex, slot })
+  }
+
+  const toggleEngineer = (eng) => {
+    setSelectedEngineers(prev => prev.includes(eng) ? prev.filter(e => e !== eng) : [...prev, eng])
+  }
+
+  const saveAssignment = async () => {
+    if (!showAssignModal || selectedEngineers.length === 0) return
+    const { rowIndex, slot } = showAssignModal
+    const nameStr = selectedEngineers.join(', ')
+    setShowAssignModal(null)
+    setLoading(true)
+    try {
+      await fetch(`${API_URL}?api=pms_assign&row=${rowIndex}&slot=${slot}&engineers=${encodeURIComponent(nameStr)}`)
+      fetchData()
+    } catch (err) { console.error(err) }
+    setLoading(false)
+  }
+
+  const markDone = async (rowIndex, slot) => {
+    setLoading(true)
+    try {
+      await fetch(`${API_URL}?api=pms_done&row=${rowIndex}&slot=${slot}`)
+      fetchData()
+    } catch (err) { console.error(err) }
+    setLoading(false)
+  }
+
+  const openDateModal = (rowIndex, slot) => {
+    const today = new Date()
+    const def = (today.getMonth() + 1) + '/' + today.getDate() + '/' + today.getFullYear()
+    setNewDate(def)
+    setShowDateModal({ rowIndex, slot })
+  }
+
+  const saveDateChange = async () => {
+    if (!showDateModal || !newDate) return
+    const { rowIndex, slot } = showDateModal
+    setShowDateModal(null)
+    setLoading(true)
+    try {
+      await fetch(`${API_URL}?api=pms_date&row=${rowIndex}&slot=${slot}&date=${encodeURIComponent(newDate)}`)
+      fetchData()
+    } catch (err) { console.error(err) }
+    setLoading(false)
+  }
+
   return (
     <div>
       <div className="mb-4 md:mb-6">
@@ -60,7 +127,8 @@ export default function PMSTracker() {
       <div className="bg-white rounded-xl border border-gray-100 p-3 md:p-4 mb-4 md:mb-6">
         <div className="grid grid-cols-2 md:flex md:flex-wrap items-center gap-2 md:gap-3">
           <select value={engineer} onChange={e => setEngineer(e.target.value)} className="px-2 md:px-3 py-2 text-xs md:text-sm border border-gray-200 rounded-lg bg-white outline-none">
-            {ENGINEERS.map(e => <option key={e} value={e}>{e === 'All' ? 'All Engineers' : e}</option>)}
+            <option value="All">All Engineers</option>
+            {ENGINEERS.map(e => <option key={e} value={e}>{e}</option>)}
           </select>
           <select value={pmsSlot} onChange={e => setPmsSlot(e.target.value)} className="px-2 md:px-3 py-2 text-xs md:text-sm border border-gray-200 rounded-lg bg-white outline-none">
             <option value="All">All PMS</option>
@@ -99,7 +167,7 @@ export default function PMSTracker() {
       ) : (
         <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[600px]">
+            <table className="w-full">
               <thead>
                 <tr className="bg-gray-50 text-left">
                   <th className="px-3 md:px-4 py-2 md:py-3 text-xs font-semibold text-gray-500 uppercase">PMS</th>
@@ -109,24 +177,42 @@ export default function PMSTracker() {
                   <th className="px-3 md:px-4 py-2 md:py-3 text-xs font-semibold text-gray-500 uppercase">PO</th>
                   <th className="px-3 md:px-4 py-2 md:py-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
                   <th className="px-3 md:px-4 py-2 md:py-3 text-xs font-semibold text-gray-500 uppercase">Engineer</th>
+                  <th className="px-3 md:px-4 py-2 md:py-3 text-xs font-semibold text-gray-500 uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {paged.map((r, i) => (
                   <tr key={i} className="border-b border-gray-50 hover:bg-gray-50/50">
-                    <td className="px-3 md:px-4 py-2 md:py-3"><span className="bg-maroon text-white px-2 py-0.5 rounded text-xs font-bold">PMS {r.pmsSlot}</span></td>
+                    <td className="px-3 md:px-4 py-2 md:py-3 whitespace-nowrap">
+                      <span className="bg-maroon text-white px-2 py-0.5 rounded text-xs font-bold">PMS {r.pmsSlot}</span>
+                    </td>
                     <td className="px-3 md:px-4 py-2 md:py-3 text-sm text-gray-700 whitespace-nowrap">{new Date(r.pmsDueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}</td>
-                    <td className="px-3 md:px-4 py-2 md:py-3 text-sm text-gray-700 truncate max-w-[120px]" title={r.facility}>{r.facility}</td>
-                    <td className="px-3 md:px-4 py-2 md:py-3 text-sm text-gray-700 truncate max-w-[100px]" title={r.equipment}>{r.equipment}</td>
-                    <td className="px-3 md:px-4 py-2 md:py-3 text-sm text-gray-500">{r.poNumber}</td>
-                    <td className="px-3 md:px-4 py-2 md:py-3">
+                    <td className="px-3 md:px-4 py-2 md:py-3 text-sm text-gray-700 whitespace-normal">{r.facility}</td>
+                    <td className="px-3 md:px-4 py-2 md:py-3 text-sm text-gray-700 whitespace-normal">{r.equipment}</td>
+                    <td className="px-3 md:px-4 py-2 md:py-3 text-sm text-gray-500 whitespace-nowrap">{r.poNumber}</td>
+                    <td className="px-3 md:px-4 py-2 md:py-3 whitespace-nowrap">
                       <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${getStatusBadge(r.status)}`}>{r.status}</span>
                     </td>
-                    <td className="px-3 md:px-4 py-2 md:py-3 text-sm text-gray-600">{r.performedBy || 'Unassigned'}</td>
+                    <td className="px-3 md:px-4 py-2 md:py-3 text-sm text-gray-600 whitespace-nowrap">{r.performedBy || 'Unassigned'}</td>
+                    <td className="px-3 md:px-4 py-2 md:py-3 whitespace-nowrap">
+                      <div className="flex items-center gap-1">
+                        {canAssign && (
+                          <button onClick={() => openAssignModal(r.rowIndex, r.pmsSlot)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-maroon" title="Assign Engineers">
+                            <UserPlus size={15} />
+                          </button>
+                        )}
+                        <button onClick={() => markDone(r.rowIndex, r.pmsSlot)} className="p-1.5 rounded-lg hover:bg-emerald-50 text-gray-500 hover:text-emerald-600" title="Mark Done">
+                          <Check size={15} />
+                        </button>
+                        <button onClick={() => openDateModal(r.rowIndex, r.pmsSlot)} className="p-1.5 rounded-lg hover:bg-amber-50 text-gray-500 hover:text-amber-600" title="Change Date">
+                          <CalendarClock size={15} />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
                 {paged.length === 0 && (
-                  <tr><td colSpan={7} className="px-4 py-12 md:py-16 text-center text-gray-400">No PMS records found</td></tr>
+                  <tr><td colSpan={8} className="px-4 py-12 md:py-16 text-center text-gray-400">No PMS records found</td></tr>
                 )}
               </tbody>
             </table>
@@ -139,6 +225,43 @@ export default function PMSTracker() {
               <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="px-3 py-1.5 text-xs md:text-sm border rounded-lg disabled:opacity-30">Next</button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Assign Modal */}
+      {showAssignModal && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setShowAssignModal(null)}>
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-gray-900 mb-4">Assign Engineers</h3>
+            <div className="space-y-2 max-h-60 overflow-y-auto mb-4">
+              {ENGINEERS.map(eng => (
+                <label key={eng} className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer border ${selectedEngineers.includes(eng) ? 'border-maroon bg-maroon/5' : 'border-gray-200'}`}>
+                  <input type="checkbox" checked={selectedEngineers.includes(eng)} onChange={() => toggleEngineer(eng)} className="w-4 h-4 accent-maroon" />
+                  <span className="text-sm">{eng}</span>
+                </label>
+              ))}
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setShowAssignModal(null)} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600">Cancel</button>
+              <button onClick={saveAssignment} className="flex-1 py-2.5 bg-maroon text-white rounded-xl text-sm font-medium">Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Date Modal */}
+      {showDateModal && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setShowDateModal(null)}>
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Change PMS Date</h3>
+            <p className="text-xs text-gray-500 mb-4">Future PMS dates will cascade from this date.</p>
+            <input type="text" value={newDate} onChange={e => setNewDate(e.target.value)} placeholder="MM/DD/YYYY"
+              className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-xl mb-4 outline-none focus:border-maroon" />
+            <div className="flex gap-3">
+              <button onClick={() => setShowDateModal(null)} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600">Cancel</button>
+              <button onClick={saveDateChange} className="flex-1 py-2.5 bg-maroon text-white rounded-xl text-sm font-medium">Update</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

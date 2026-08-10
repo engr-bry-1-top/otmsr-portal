@@ -65,3 +65,11 @@ body {
   
   .md\:grid-cols-2 { grid-template-columns: 1fr 1fr !important; }
 }
+
+nav.overflow-y-auto::-webkit-scrollbar { width: 0; background: transparent; }
+nav.overflow-y-auto { scrollbar-width: none; -ms-overflow-style: none; }
+main::-webkit-scrollbar { width: 6px; }
+main::-webkit-scrollbar-track { background: transparent; }
+main::-webkit-scrollbar-thumb { background: #d4d4d4; border-radius: 3px; }
+main::-webkit-scrollbar-thumb:hover { background: #a3a3a3; }
+* { scrollbar-width: thin; scrollbar-color: #d4d4d4 transparent; }

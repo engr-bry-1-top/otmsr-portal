@@ -15,6 +15,7 @@ import COACalendar from './pages/COACalendar'
 import TeamPerformance from './pages/TeamPerformance'
 import Layout from './components/Layout'
 import ManualLibrary from './pages/ManualLibrary'
+import PurchaseRequest from './pages/PurchaseRequest'
 
 function App() {
   return (
@@ -34,6 +35,7 @@ function App() {
       <Route path="/coa" element={<Layout><COACalendar /></Layout>} />
       <Route path="/team-performance" element={<Layout><TeamPerformance /></Layout>} />
       <Route path="/manuals" element={<Layout><ManualLibrary /></Layout>} />
+      <Route path="/purchase-request/new" element={<Layout><PurchaseRequest /></Layout>} />
     </Routes>
   )
 }
