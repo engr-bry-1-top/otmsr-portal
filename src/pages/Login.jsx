@@ -171,7 +171,12 @@ export default function Login() {
             </div>
 
             {error && (
-              <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600 anim-shake">{error}</div>
+              <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm anim-shake">
+                <p className="text-red-600">{error}</p>
+                <p className="text-xs text-red-400 mt-1">
+                  Can't login? Contact Engr. Brian Ezekiel Batalon at brianezekiel.onetop@gmail.com
+                </p>
+              </div>
             )}
 
             <div className="anim-fade-4">
