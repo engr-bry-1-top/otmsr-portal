@@ -18,6 +18,8 @@ import ManualLibrary from './pages/ManualLibrary'
 import PurchaseRequest from './pages/PurchaseRequest'
 import MyDwar from './pages/MyDwar'
 import TeamDwar from './pages/TeamDwar'
+import MySoa from './pages/MySoa'
+import TeamSoa from './pages/TeamSoa'
 
 function App() {
   return (
@@ -40,6 +42,8 @@ function App() {
       <Route path="/purchase-request/new" element={<Layout><PurchaseRequest /></Layout>} />
       <Route path="/my-dwar" element={<Layout><MyDwar /></Layout>} />
       <Route path="/team-dwar" element={<Layout><TeamDwar /></Layout>} />
+      <Route path="/my-soa" element={<Layout><MySoa /></Layout>} />
+      <Route path="/team-soa" element={<Layout><TeamSoa /></Layout>} />
     </Routes>
   )
 }

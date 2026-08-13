@@ -46,6 +46,7 @@ export default function Layout({ children }) {
     { path: '/coa', label: 'COA Calendar', icon: Calendar },
     { path: '/concerns', label: 'Concerns', icon: Headset },
     { path: '/feedback', label: 'Feedback', icon: Star },
+    { path: '/my-soa', label: 'My SOA', icon: FileText },
     { path: '/purchase-request/new', label: 'Purchase Requests', icon: ShoppingCart },
   ]
 

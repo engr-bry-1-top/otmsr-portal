@@ -30,6 +30,8 @@ export default function MyDwar() {
   const [editContact, setEditContact] = useState('')
   const [editEmail, setEditEmail] = useState('')
   const [contactMessage, setContactMessage] = useState(null)
+  const [deleteModal, setDeleteModal] = useState(null)
+  const [saveMessage, setSaveMessage] = useState(null)
   const [printModal, setPrintModal] = useState(false)
   const [printStartMonth, setPrintStartMonth] = useState(currentMonthName)
   const [printEndMonth, setPrintEndMonth] = useState(currentMonthName)
@@ -86,7 +88,6 @@ export default function MyDwar() {
     setLoading(false)
   }
 
-  // Get the actual date and label for a given day number in the current month/week
   const getDayInfo = (dayNum) => {
     const monthIdx = MONTHS.indexOf(month)
     const daysInMonth = new Date(parseInt(year), monthIdx + 1, 0).getDate()
@@ -103,7 +104,6 @@ export default function MyDwar() {
         actualYear: parseInt(year)
       }
     } else {
-      // Cross into next month
       const actualDay = dayNum - daysInMonth
       let nextMonthIdx = monthIdx + 1
       let nextYear = parseInt(year)
@@ -125,7 +125,6 @@ export default function MyDwar() {
     }
   }
 
-  // Get Monday-Friday days for the selected week (crossing month boundaries)
   const getWorkingDaysForWeek = (wk) => {
     const days = []
     const monthIdx = MONTHS.indexOf(month)
@@ -153,7 +152,7 @@ export default function MyDwar() {
         const dateObj = new Date(actualYear, actualMonth, actualDay)
         const dayOfWeek = dateObj.getDay()
         
-        if (dayOfWeek >= 1 && dayOfWeek <= 5) { // Monday to Friday only
+        if (dayOfWeek >= 1 && dayOfWeek <= 5) {
           days.push(d)
         }
       }
@@ -182,6 +181,7 @@ export default function MyDwar() {
   const saveEntry = async () => {
     if (!editModal) return
     setSaving(true)
+    setSaveMessage(null)
     try {
       const payload = {
         username: selectedUser.username,
@@ -201,13 +201,19 @@ export default function MyDwar() {
       })
       
       setEditModal(null)
+      setSaveMessage({ type: 'success', text: 'Entry saved!' })
+      setTimeout(() => setSaveMessage(null), 3000)
       fetchEntries()
-    } catch (err) { console.error(err) }
+    } catch (err) { 
+      console.error(err)
+      setSaveMessage({ type: 'error', text: 'Failed to save' })
+    }
     setSaving(false)
   }
 
-  const deleteEntry = async (day) => {
-    if (!confirm(`Delete entry for Day ${day}?`)) return
+  const confirmDelete = async () => {
+    if (!deleteModal) return
+    setSaving(true)
     try {
       await supabase.from('dwar_entries')
         .delete()
@@ -215,9 +221,16 @@ export default function MyDwar() {
         .eq('month_name', month)
         .eq('year', parseInt(year))
         .eq('week', week)
-        .eq('day', day)
+        .eq('day', deleteModal)
+      setDeleteModal(null)
+      setSaveMessage({ type: 'success', text: 'Entry deleted!' })
+      setTimeout(() => setSaveMessage(null), 3000)
       fetchEntries()
-    } catch (err) { console.error(err) }
+    } catch (err) { 
+      console.error(err)
+      setSaveMessage({ type: 'error', text: 'Failed to delete' })
+    }
+    setSaving(false)
   }
 
   const saveContactInfo = async () => {
@@ -365,7 +378,7 @@ export default function MyDwar() {
                   <th style="background:#800000;color:#fff;padding:5px;font-size:8px;text-transform:uppercase;border:1px solid #800000;">Time Out</th>
                   <th style="background:#800000;color:#fff;padding:5px;font-size:8px;text-transform:uppercase;border:1px solid #800000;">Work Schedule</th>
                   <th style="background:#800000;color:#fff;padding:5px;font-size:8px;text-transform:uppercase;border:1px solid #800000;">Activity Done</th>
-                  <th style="background:#800000;color:#800000;padding:5px;font-size:8px;text-transform:uppercase;border:1px solid #800000;">Remarks</th>
+                  <th style="background:#800000;color:#fff;padding:5px;font-size:8px;text-transform:uppercase;border:1px solid #800000;">Remarks</th>
                 </tr>
               </thead>
               <tbody>${rowsHTML}</tbody>
@@ -409,11 +422,25 @@ export default function MyDwar() {
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 md:gap-3 mb-3 md:mb-6 no-print">
-        <div>
-          <h1 className="text-lg md:text-2xl font-bold text-gray-900">
-            {isOwnDwar ? 'My DWAR' : selectedUser?.full_name + "'s DWAR"}
-          </h1>
-          <p className="text-xs md:text-sm text-gray-500 mt-0.5 md:mt-1">Daily Work Accomplishment Report</p>
+        <div className="flex items-center gap-2 md:gap-3">
+          {!isOwnDwar && (
+            <button 
+              onClick={() => navigate('/team-dwar')} 
+              className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:text-maroon hover:border-maroon/40 transition-all flex-shrink-0"
+              title="Back to Team DWAR"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 12H5"/>
+                <path d="M12 19l-7-7 7-7"/>
+              </svg>
+            </button>
+          )}
+          <div>
+            <h1 className="text-lg md:text-2xl font-bold text-gray-900">
+              {isOwnDwar ? 'My DWAR' : selectedUser?.full_name + "'s DWAR"}
+            </h1>
+            <p className="text-xs md:text-sm text-gray-500 mt-0.5 md:mt-1">Daily Work Accomplishment Report</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={handlePrint} className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 text-xs md:text-sm bg-maroon text-white rounded-lg md:rounded-xl hover:bg-maroon-dark">
@@ -500,6 +527,17 @@ export default function MyDwar() {
         </div>
       )}
 
+      {saveMessage && (
+        <div className={`mb-3 md:mb-4 px-3 md:px-4 py-2.5 md:py-3 rounded-xl text-xs md:text-sm font-medium ${
+          saveMessage.type === 'success' 
+            ? 'bg-emerald-50 border border-emerald-200 text-emerald-700' 
+            : 'bg-red-50 border border-red-200 text-red-700'
+        }`}>
+          {saveMessage.type === 'success' ? '✓ ' : '✗ '}
+          {saveMessage.text}
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-gray-200 border-t-maroon rounded-full animate-spin" /></div>
       ) : (
@@ -538,7 +576,7 @@ export default function MyDwar() {
                               <Plus size={isMobile ? 12 : 14} />
                             </button>
                             {entry && (
-                              <button onClick={() => deleteEntry(dayNum)} className="p-1 md:p-1.5 rounded-lg hover:bg-red-50 text-gray-500 hover:text-red-600" title="Delete">
+                              <button onClick={() => setDeleteModal(dayNum)} className="p-1 md:p-1.5 rounded-lg hover:bg-red-50 text-gray-500 hover:text-red-600" title="Delete">
                                 <Trash2 size={isMobile ? 12 : 14} />
                               </button>
                             )}
@@ -550,6 +588,38 @@ export default function MyDwar() {
                 })}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal && (
+        <div style={{ 
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9998, 
+          display: 'flex', justifyContent: 'center', 
+          alignItems: isMobile ? 'flex-end' : 'center',
+          padding: isMobile ? 0 : '1rem' 
+        }} onClick={() => setDeleteModal(null)}>
+          <div style={{ 
+            background: '#fff', 
+            borderRadius: isMobile ? '16px 16px 0 0' : '14px',
+            padding: isMobile ? '1.25rem' : '1.5rem', 
+            width: '100%', maxWidth: '400px', 
+            textAlign: 'center',
+            boxShadow: isMobile ? '0 -10px 40px rgba(0,0,0,0.2)' : '0 20px 50px rgba(0,0,0,0.3)' 
+          }} onClick={e => e.stopPropagation()}>
+            {isMobile && <div style={{ width: '40px', height: '4px', background: '#E5E5E5', borderRadius: '2px', margin: '0 auto 0.75rem' }} />}
+            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🗑️</div>
+            <h3 style={{ fontSize: '0.95rem', color: '#CC0000', marginBottom: '0.5rem' }}>Delete Entry?</h3>
+            <p style={{ fontSize: '0.8rem', color: '#737373', marginBottom: '1rem' }}>
+              This action cannot be undone.
+            </p>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+              <button onClick={() => setDeleteModal(null)} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600">Cancel</button>
+              <button onClick={confirmDelete} disabled={saving} className="flex-1 py-2.5 bg-red-600 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2">
+                <Trash2 size={14} /> {saving ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
           </div>
         </div>
       )}
