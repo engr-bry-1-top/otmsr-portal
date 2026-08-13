@@ -16,6 +16,8 @@ import TeamPerformance from './pages/TeamPerformance'
 import Layout from './components/Layout'
 import ManualLibrary from './pages/ManualLibrary'
 import PurchaseRequest from './pages/PurchaseRequest'
+import MyDwar from './pages/MyDwar'
+import TeamDwar from './pages/TeamDwar'
 
 function App() {
   return (
@@ -36,6 +38,8 @@ function App() {
       <Route path="/team-performance" element={<Layout><TeamPerformance /></Layout>} />
       <Route path="/manuals" element={<Layout><ManualLibrary /></Layout>} />
       <Route path="/purchase-request/new" element={<Layout><PurchaseRequest /></Layout>} />
+      <Route path="/my-dwar" element={<Layout><MyDwar /></Layout>} />
+      <Route path="/team-dwar" element={<Layout><TeamDwar /></Layout>} />
     </Routes>
   )
 }

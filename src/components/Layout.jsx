@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
-import { LayoutDashboard, CreditCard, BookOpen, FileText, ShoppingCart, Settings, LogOut, Menu, X, ChevronLeft, BarChart3, TrendingUp, Search, ClipboardCheck, Calendar, Headset, Star } from 'lucide-react'
+import { LayoutDashboard, CreditCard, BookOpen, FileText, ShoppingCart, Settings, LogOut, Menu, X, ChevronLeft, BarChart3, TrendingUp, Search, ClipboardCheck, Calendar, Headset, Star, ClipboardList } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 export default function Layout({ children }) {
@@ -139,36 +139,44 @@ export default function Layout({ children }) {
           </button>
           <div className="hidden lg:block" />
 
-          <div className="relative ml-auto">
-            <button onClick={() => setUserMenuOpen(!userMenuOpen)} className="flex items-center gap-2 md:gap-3 hover:bg-gray-50 rounded-lg px-2 md:px-3 py-1.5">
-              <div className="w-8 h-8 rounded-full bg-maroon flex items-center justify-center text-white text-xs font-bold overflow-hidden flex-shrink-0">
-                {avatar ? <img src={avatar} alt="" className="w-full h-full object-cover" /> : user.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2)}
-              </div>
-              <div className="hidden sm:block text-left">
-                <p className="text-sm font-medium text-gray-700 leading-tight">{user.full_name?.split(' ')[0]}</p>
-                <p className="text-xs text-gray-400 leading-tight">{user.role}</p>
-              </div>
-            </button>
+          <div className="flex items-center gap-2 ml-auto">
+            {/* My DWAR button — top nav bar next to profile */}
+            <Link to="/my-dwar" className="hidden sm:flex items-center gap-2 hover:bg-maroon/5 text-maroon rounded-lg px-3 py-1.5 text-sm font-medium">
+              <ClipboardList size={16} />
+              My DWAR
+            </Link>
 
-            {userMenuOpen && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setUserMenuOpen(false)} />
-                <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-20">
-                  <div className="px-4 py-3 border-b border-gray-50">
-                    <p className="text-sm font-medium text-gray-800">{user.full_name}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{user.role}</p>
-                  </div>
-                  <Link to="/profile" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50">
-                    <Settings size={16} /> Profile Settings
-                  </Link>
-                  <div className="border-t border-gray-50 mt-1 pt-1">
-                    <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 w-full">
-                      <LogOut size={16} /> Sign out
-                    </button>
-                  </div>
+            <div className="relative">
+              <button onClick={() => setUserMenuOpen(!userMenuOpen)} className="flex items-center gap-2 md:gap-3 hover:bg-gray-50 rounded-lg px-2 md:px-3 py-1.5">
+                <div className="w-8 h-8 rounded-full bg-maroon flex items-center justify-center text-white text-xs font-bold overflow-hidden flex-shrink-0">
+                  {avatar ? <img src={avatar} alt="" className="w-full h-full object-cover" /> : user.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2)}
                 </div>
-              </>
-            )}
+                <div className="hidden sm:block text-left">
+                  <p className="text-sm font-medium text-gray-700 leading-tight">{user.full_name?.split(' ')[0]}</p>
+                  <p className="text-xs text-gray-400 leading-tight">{user.role}</p>
+                </div>
+              </button>
+
+              {userMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setUserMenuOpen(false)} />
+                  <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-20">
+                    <div className="px-4 py-3 border-b border-gray-50">
+                      <p className="text-sm font-medium text-gray-800">{user.full_name}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{user.role}</p>
+                    </div>
+                    <Link to="/profile" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50">
+                      <Settings size={16} /> Profile Settings
+                    </Link>
+                    <div className="border-t border-gray-50 mt-1 pt-1">
+                      <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 w-full">
+                        <LogOut size={16} /> Sign out
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </header>
 

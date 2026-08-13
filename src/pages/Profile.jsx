@@ -48,9 +48,8 @@ export default function Profile() {
       ctx.restore()
     }
     ctx.restore()
+    // Only draw a subtle border - no grid lines
     ctx.save(); ctx.beginPath(); ctx.arc(CANVAS_SIZE / 2, CANVAS_SIZE / 2, CANVAS_SIZE / 2, 0, Math.PI * 2); ctx.clip()
-    ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1
-    for (let i = 1; i < 3; i++) { ctx.beginPath(); ctx.moveTo((CANVAS_SIZE / 3) * i, 0); ctx.lineTo((CANVAS_SIZE / 3) * i, CANVAS_SIZE); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, (CANVAS_SIZE / 3) * i); ctx.lineTo(CANVAS_SIZE, (CANVAS_SIZE / 3) * i); ctx.stroke() }
     ctx.strokeStyle = '#800020'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(CANVAS_SIZE / 2, CANVAS_SIZE / 2, CANVAS_SIZE / 2 - 2, 0, Math.PI * 2); ctx.stroke(); ctx.restore()
   }, [crop, zoom, rotation])
 
