@@ -61,16 +61,6 @@ export default function Deployment() {
   const handlePrint = () => {
     if (!metrics) return
     
-    // Capture chart SVGs as images
-    const chartContainers = document.querySelectorAll('.recharts-wrapper svg')
-    const chartImages = []
-    chartContainers.forEach(svg => {
-      const svgData = new XMLSerializer().serializeToString(svg)
-      const img = new Image()
-      img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)))
-      chartImages.push(img)
-    })
-    
     const title = 'Deployment Overview Report'
     const filterLabel = `Year: ${filterYear} | Quarter: ${filterQuarter} | Month: ${filterMonth}`
     
@@ -133,98 +123,174 @@ export default function Deployment() {
       </div>
     `
     
-    // Wait for chart images to load, then build the print window
-    Promise.all(chartImages.map(img => new Promise(resolve => { img.onload = resolve; img.onerror = resolve }))).then(() => {
-      // Chart images HTML
-      let chartsHTML = ''
+    // SVG Donut chart generator
+    const createDonutChart = (data, title) => {
+      const total = data.reduce((sum, d) => sum + d.value, 0)
+      if (total === 0) return ''
       
-      // Delivery chart
-      if (chartImages[0]) {
-        chartsHTML += `<div style="border:1px solid #ddd;border-radius:6px;padding:12px;margin-bottom:16px;page-break-inside:avoid;"><h3 style="font-size:11px;font-weight:700;color:#333;margin:0 0 8px;">Volume by Delivery Month</h3><img src="${chartImages[0].src}" style="width:100%;max-height:220px;object-fit:contain;" /></div>`
-      }
+      const size = 140
+      const strokeWidth = 26
+      const radius = (size - strokeWidth) / 2
+      const cx = size / 2
+      const cy = size / 2
+      const circumference = 2 * Math.PI * radius
       
-      // Install chart
-      if (chartImages[1]) {
-        chartsHTML += `<div style="border:1px solid #ddd;border-radius:6px;padding:12px;margin-bottom:16px;page-break-inside:avoid;"><h3 style="font-size:11px;font-weight:700;color:#333;margin:0 0 8px;">Volume by Install Month</h3><img src="${chartImages[1].src}" style="width:100%;max-height:220px;object-fit:contain;" /></div>`
-      }
+      let offset = 0
+      let segmentsHTML = ''
       
-      // Status pie chart
-      if (chartImages[2]) {
-        chartsHTML += `<div style="border:1px solid #ddd;border-radius:6px;padding:12px;margin-bottom:16px;page-break-inside:avoid;"><h3 style="font-size:11px;font-weight:700;color:#333;margin:0 0 8px;">Installation Status</h3><img src="${chartImages[2].src}" style="width:100%;max-height:220px;object-fit:contain;" /></div>`
-      }
-      
-      // Region pie chart
-      if (chartImages[3]) {
-        chartsHTML += `<div style="border:1px solid #ddd;border-radius:6px;padding:12px;margin-bottom:16px;page-break-inside:avoid;"><h3 style="font-size:11px;font-weight:700;color:#333;margin:0 0 8px;">Regional Allocation</h3><img src="${chartImages[3].src}" style="width:100%;max-height:220px;object-fit:contain;" /></div>`
-      }
-      
-      // Backlog origin pie chart
-      if (chartImages[4]) {
-        chartsHTML += `<div style="border:1px solid #ddd;border-radius:6px;padding:12px;margin-bottom:16px;page-break-inside:avoid;"><h3 style="font-size:11px;font-weight:700;color:#333;margin:0 0 8px;">Backlog Origin Mix</h3><img src="${chartImages[4].src}" style="width:100%;max-height:220px;object-fit:contain;" /></div>`
-      }
-      
-      // Leaderboard table
-      let leaderboardRows = ''
-      metrics.leaderboard.forEach((eng, i) => {
-        leaderboardRows += `
-          <tr>
-            <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:center;">
-              <span style="display:inline-block;width:22px;height:22px;border-radius:6px;font-size:10px;font-weight:800;${i < 3 ? 'background:#800000;color:#fff;' : 'background:#f0f0f0;color:#666;'}">${i+1}</span>
-            </td>
-            <td style="padding:5px 8px;border-bottom:1px solid #eee;font-size:10px;font-weight:600;color:#333;">${eng.name}</td>
-            <td style="padding:5px 8px;border-bottom:1px solid #eee;font-size:10px;text-align:center;color:#800000;font-weight:700;">${(eng.backlogDone || 0).toLocaleString()}</td>
-            <td style="padding:5px 8px;border-bottom:1px solid #eee;font-size:10px;text-align:center;color:#666;">${eng.count || 0}</td>
-            <td style="padding:5px 8px;border-bottom:1px solid #eee;font-size:10px;text-align:center;color:#666;">${(eng.volume || 0).toLocaleString()}</td>
-          </tr>
-        `
+      data.forEach((d, i) => {
+        const pct = d.value / total
+        const dashLength = pct * circumference
+        const rotation = offset * 360
+        segmentsHTML += `<circle cx="${cx}" cy="${cy}" r="${radius}" fill="none" stroke="${COLORS[i % COLORS.length]}" stroke-width="${strokeWidth}" stroke-dasharray="${dashLength} ${circumference - dashLength}" transform="rotate(-90 ${cx} ${cy})" stroke-dashoffset="${-rotation * circumference / 360}" />`
+        offset += pct
       })
       
-      const leaderboardHTML = `
-        <div style="border:1px solid #ddd;border-radius:6px;padding:12px;page-break-inside:avoid;">
-          <h3 style="font-size:11px;font-weight:700;color:#800000;margin:0 0 8px;">🏆 Engineer Leaderboard</h3>
-          <table style="width:100%;border-collapse:collapse;">
-            <thead>
-              <tr>
-                <th style="background:#f5f5f5;padding:6px 8px;font-size:8px;text-transform:uppercase;color:#777;text-align:center;">#</th>
-                <th style="background:#f5f5f5;padding:6px 8px;font-size:8px;text-transform:uppercase;color:#777;text-align:left;">Engineer</th>
-                <th style="background:#f5f5f5;padding:6px 8px;font-size:8px;text-transform:uppercase;color:#777;text-align:center;">Done</th>
-                <th style="background:#f5f5f5;padding:6px 8px;font-size:8px;text-transform:uppercase;color:#777;text-align:center;">Tasks</th>
-                <th style="background:#f5f5f5;padding:6px 8px;font-size:8px;text-transform:uppercase;color:#777;text-align:center;">Volume</th>
-              </tr>
-            </thead>
-            <tbody>${leaderboardRows}</tbody>
-          </table>
+      let legendHTML = ''
+      data.forEach((d, i) => {
+        legendHTML += `<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px;"><div style="width:10px;height:10px;border-radius:2px;background:${COLORS[i % COLORS.length]};flex-shrink:0;"></div><span style="font-size:8px;color:#666;">${d.name}: <strong>${d.value.toLocaleString()}</strong> (${((d.value / total) * 100).toFixed(1)}%)</span></div>`
+      })
+      
+      return `
+        <div style="border:1px solid #ddd;border-radius:6px;padding:15px;page-break-inside:avoid;display:flex;align-items:center;gap:15px;min-height:170px;">
+          <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="flex-shrink:0;">
+            ${segmentsHTML}
+            <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" style="font-size:16px;font-weight:800;fill:#333;font-family:Arial,sans-serif;">${total.toLocaleString()}</text>
+          </svg>
+          <div style="flex:1;min-width:0;">
+            <h3 style="font-size:12px;font-weight:700;color:#333;margin:0 0 8px;">${title}</h3>
+            ${legendHTML}
+          </div>
         </div>
       `
+    }
+    
+    // SVG Bar chart generator with grid lines and value labels
+    const createBarChart = (data, title, color) => {
+      const maxVal = Math.max(...data.map(d => d.value), 1)
+      const chartHeight = 200
+      const chartWidth = 500
+      const barAreaWidth = chartWidth - 40
+      const barCount = data.length
+      const barWidth = (barAreaWidth / barCount) * 0.7
+      const gap = (barAreaWidth / barCount) * 0.3
+      const paddingLeft = 10
+      const paddingBottom = 25
+      const paddingTop = 10
+      const plotHeight = chartHeight - paddingBottom - paddingTop
       
-      const printWindow = window.open('', '_blank', 'width=1200,height=800')
-      if (!printWindow) { alert('Popup blocked. Please allow popups.') ; return }
+      // Grid lines (5 horizontal lines)
+      let gridLinesHTML = ''
+      for (let g = 0; g <= 4; g++) {
+        const gridY = paddingTop + (plotHeight * g / 4)
+        const gridVal = Math.round(maxVal * (4 - g) / 4)
+        gridLinesHTML += `<line x1="${paddingLeft}" y1="${gridY}" x2="${chartWidth - 10}" y2="${gridY}" stroke="#e0e0e0" stroke-width="1" />`
+        gridLinesHTML += `<text x="${paddingLeft - 5}" y="${gridY + 3}" text-anchor="end" style="font-size:8px;fill:#999;font-family:Arial,sans-serif;">${gridVal}</text>`
+      }
       
-      printWindow.document.write(`<!DOCTYPE html><html><head><title>${title}</title>`)
-      printWindow.document.write(`<style>`)
-      printWindow.document.write(`@page { size: A4 landscape; margin: 10mm; }`)
-      printWindow.document.write(`body { font-family: Arial, sans-serif; margin: 0; padding: 15px; color: #1A1A1A; }`)
-      printWindow.document.write(`h1 { color: #800000; font-size: 18px; margin: 0 0 4px 0; border-bottom: 2px solid #800000; padding-bottom: 6px; }`)
-      printWindow.document.write(`.filter-label { font-size: 10px; color: #666; margin-bottom: 12px; }`)
-      printWindow.document.write(`* { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }`)
-      printWindow.document.write(`</style></head><body>`)
-      printWindow.document.write(`<h1>${title}</h1>`)
-      printWindow.document.write(`<p class="filter-label">${filterLabel}</p>`)
-      printWindow.document.write(kpiCardsHTML)
-      printWindow.document.write(progressHTML)
-      printWindow.document.write(backlogHTML)
-      printWindow.document.write(`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">`)
-      printWindow.document.write(chartsHTML)
-      printWindow.document.write(`</div>`)
-      printWindow.document.write(leaderboardHTML)
-      printWindow.document.write(`</body></html>`)
-      printWindow.document.close()
+      // Bars with value labels
+      let barsHTML = ''
+      data.forEach((d, i) => {
+        const barHeight = (d.value / maxVal) * plotHeight
+        const x = paddingLeft + i * (barWidth + gap) + gap / 2
+        const y = paddingTop + plotHeight - barHeight
+        barsHTML += `<rect x="${x}" y="${y}" width="${barWidth}" height="${Math.max(barHeight, 2)}" fill="${color}" rx="3" />`
+        if (d.value > 0) {
+          barsHTML += `<text x="${x + barWidth / 2}" y="${y - 5}" text-anchor="middle" style="font-size:9px;font-weight:700;fill:#333;font-family:Arial,sans-serif;">${d.value.toLocaleString()}</text>`
+        }
+        barsHTML += `<text x="${x + barWidth / 2}" y="${chartHeight - 8}" text-anchor="middle" style="font-size:8px;fill:#666;font-family:Arial,sans-serif;">${d.name}</text>`
+      })
       
-      setTimeout(() => {
-        printWindow.print()
-        printWindow.close()
-      }, 800)
+      return `
+        <div style="border:1px solid #ddd;border-radius:6px;padding:15px;page-break-inside:avoid;">
+          <h3 style="font-size:12px;font-weight:700;color:#333;margin:0 0 10px;">${title}</h3>
+          <svg width="100%" viewBox="0 0 ${chartWidth} ${chartHeight}" style="max-width:100%;">
+            ${gridLinesHTML}
+            <line x1="${paddingLeft}" y1="${paddingTop + plotHeight}" x2="${chartWidth - 10}" y2="${paddingTop + plotHeight}" stroke="#ccc" stroke-width="1" />
+            ${barsHTML}
+          </svg>
+        </div>
+      `
+    }
+    
+    // Build charts HTML
+    const deliveryChartHTML = createBarChart(metrics.deliveryData, 'Volume by Delivery Month', '#800000')
+    const installChartHTML = createBarChart(metrics.installData, 'Volume by Install Month', '#1E3A5F')
+    const statusChartHTML = createDonutChart(metrics.statusData, 'Installation Status')
+    const regionChartHTML = createDonutChart(metrics.regionData.slice(0, 8), 'Regional Allocation')
+    const backlogChartHTML = metrics.backlogData.length > 0 ? createDonutChart(metrics.backlogData, 'Backlog Origin Mix') : ''
+    
+    // Leaderboard table
+    let leaderboardRows = ''
+    metrics.leaderboard.forEach((eng, i) => {
+      leaderboardRows += `
+        <tr>
+          <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:center;">
+            <span style="display:inline-block;width:22px;height:22px;border-radius:6px;font-size:10px;font-weight:800;${i < 3 ? 'background:#800000;color:#fff;' : 'background:#f0f0f0;color:#666;'}">${i+1}</span>
+          </td>
+          <td style="padding:5px 8px;border-bottom:1px solid #eee;font-size:10px;font-weight:600;color:#333;">${eng.name}</td>
+          <td style="padding:5px 8px;border-bottom:1px solid #eee;font-size:10px;text-align:center;color:#800000;font-weight:700;">${(eng.backlogDone || 0).toLocaleString()}</td>
+          <td style="padding:5px 8px;border-bottom:1px solid #eee;font-size:10px;text-align:center;color:#666;">${eng.count || 0}</td>
+          <td style="padding:5px 8px;border-bottom:1px solid #eee;font-size:10px;text-align:center;color:#666;">${(eng.volume || 0).toLocaleString()}</td>
+        </tr>
+      `
     })
+    
+    const leaderboardHTML = `
+      <div style="border:1px solid #ddd;border-radius:6px;padding:12px;page-break-inside:avoid;">
+        <h3 style="font-size:11px;font-weight:700;color:#800000;margin:0 0 8px;">🏆 Engineer Leaderboard</h3>
+        <table style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr>
+              <th style="background:#f5f5f5;padding:6px 8px;font-size:8px;text-transform:uppercase;color:#777;text-align:center;">#</th>
+              <th style="background:#f5f5f5;padding:6px 8px;font-size:8px;text-transform:uppercase;color:#777;text-align:left;">Engineer</th>
+              <th style="background:#f5f5f5;padding:6px 8px;font-size:8px;text-transform:uppercase;color:#777;text-align:center;">Done</th>
+              <th style="background:#f5f5f5;padding:6px 8px;font-size:8px;text-transform:uppercase;color:#777;text-align:center;">Tasks</th>
+              <th style="background:#f5f5f5;padding:6px 8px;font-size:8px;text-transform:uppercase;color:#777;text-align:center;">Volume</th>
+            </tr>
+          </thead>
+          <tbody>${leaderboardRows}</tbody>
+        </table>
+      </div>
+    `
+    
+    const printWindow = window.open('', '_blank', 'width=1200,height=800')
+    if (!printWindow) { alert('Popup blocked. Please allow popups.') ; return }
+    
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>${title}</title>`)
+    printWindow.document.write(`<style>`)
+    printWindow.document.write(`@page { size: A4 landscape; margin: 10mm; }`)
+    printWindow.document.write(`body { font-family: Arial, sans-serif; margin: 0; padding: 15px; color: #1A1A1A; }`)
+    printWindow.document.write(`h1 { color: #800000; font-size: 18px; margin: 0 0 4px 0; border-bottom: 2px solid #800000; padding-bottom: 6px; }`)
+    printWindow.document.write(`.filter-label { font-size: 10px; color: #666; margin-bottom: 12px; }`)
+    printWindow.document.write(`* { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }`)
+    printWindow.document.write(`</style></head><body>`)
+    printWindow.document.write(`<h1>${title}</h1>`)
+    printWindow.document.write(`<p class="filter-label">${filterLabel}</p>`)
+    printWindow.document.write(kpiCardsHTML)
+    printWindow.document.write(progressHTML)
+    printWindow.document.write(backlogHTML)
+    
+    // Charts in 2-column layout
+    printWindow.document.write(`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">`)
+    printWindow.document.write(deliveryChartHTML)
+    printWindow.document.write(installChartHTML)
+    printWindow.document.write(`</div>`)
+    
+    printWindow.document.write(`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">`)
+    printWindow.document.write(statusChartHTML)
+    printWindow.document.write(regionChartHTML)
+    printWindow.document.write(`</div>`)
+    
+    printWindow.document.write(backlogChartHTML)
+    printWindow.document.write(leaderboardHTML)
+    printWindow.document.write(`</body></html>`)
+    printWindow.document.close()
+    
+    setTimeout(() => {
+      printWindow.print()
+      printWindow.close()
+    }, 500)
   }
 
   if (loading) return <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-gray-200 border-t-maroon rounded-full animate-spin" /></div>
@@ -243,7 +309,6 @@ export default function Deployment() {
         </div>
       </div>
 
-      {/* Rest of the component remains exactly the same as you pasted */}
       <div className="bg-white rounded-xl border border-gray-100 p-3 md:p-4 mb-4 md:mb-6 flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 md:gap-3 no-print">
         <select value={filterYear} onChange={e => { setFilterYear(e.target.value); setFilterQuarter('All'); setFilterMonth('All') }} className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white outline-none w-full sm:w-auto">
           {years.map(y => <option key={y} value={y}>{y === 'Overall' ? 'Overall View' : `${y} Year`}</option>)}
