@@ -58,26 +58,180 @@ export default function Deployment() {
     })
   }, [rawData, filterYear, filterQuarter, filterMonth])
 
-  const handlePrint = () => window.print()
+  const handlePrint = () => {
+    if (!metrics) return
+    
+    // Capture chart SVGs as images
+    const chartContainers = document.querySelectorAll('.recharts-wrapper svg')
+    const chartImages = []
+    chartContainers.forEach(svg => {
+      const svgData = new XMLSerializer().serializeToString(svg)
+      const img = new Image()
+      img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)))
+      chartImages.push(img)
+    })
+    
+    const title = 'Deployment Overview Report'
+    const filterLabel = `Year: ${filterYear} | Quarter: ${filterQuarter} | Month: ${filterMonth}`
+    
+    // KPI cards HTML
+    const kpiCardsHTML = `
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px;">
+        <div style="border:1px solid #ddd;border-radius:6px;padding:10px;text-align:center;border-left:3px solid #800000;">
+          <p style="font-size:18px;font-weight:800;color:#800000;margin:0;">${metrics.uniquePOs}</p>
+          <p style="font-size:8px;color:#777;text-transform:uppercase;font-weight:600;margin:2px 0 0;">Contracts (POs)</p>
+        </div>
+        <div style="border:1px solid #ddd;border-radius:6px;padding:10px;text-align:center;">
+          <p style="font-size:18px;font-weight:800;color:#333;margin:0;">${metrics.totalQty.toLocaleString()}</p>
+          <p style="font-size:8px;color:#777;text-transform:uppercase;font-weight:600;margin:2px 0 0;">Total Items</p>
+        </div>
+        <div style="border:1px solid #ddd;border-radius:6px;padding:10px;text-align:center;">
+          <p style="font-size:18px;font-weight:800;color:#15803D;margin:0;">${metrics.installedQty.toLocaleString()}</p>
+          <p style="font-size:8px;color:#777;text-transform:uppercase;font-weight:600;margin:2px 0 0;">Installed</p>
+        </div>
+        <div style="border:1px solid #ddd;border-radius:6px;padding:10px;text-align:center;">
+          <p style="font-size:18px;font-weight:800;color:#B45309;margin:0;">${metrics.avgTurnaround}d</p>
+          <p style="font-size:8px;color:#777;text-transform:uppercase;font-weight:600;margin:2px 0 0;">Avg Turnaround</p>
+        </div>
+        <div style="border:1px solid #ddd;border-radius:6px;padding:10px;text-align:center;border-left:3px solid #800000;">
+          <p style="font-size:18px;font-weight:800;color:#800000;margin:0;">${metrics.installRate}%</p>
+          <p style="font-size:8px;color:#777;text-transform:uppercase;font-weight:600;margin:2px 0 0;">Install Rate</p>
+        </div>
+      </div>
+    `
+    
+    // Progress bar
+    const progressHTML = `
+      <div style="border:1px solid #ddd;border-radius:6px;padding:12px;margin-bottom:16px;">
+        <h3 style="font-size:11px;font-weight:700;color:#333;margin:0 0 8px;">Hardware Delivery Fulfillment</h3>
+        <div style="width:100%;background:#E5E5E5;border-radius:6px;height:14px;overflow:hidden;">
+          <div style="width:${metrics.installRate}%;background:#800000;height:14px;border-radius:6px;"></div>
+        </div>
+        <p style="font-size:10px;color:#666;margin:6px 0 0;">${metrics.installedQty.toLocaleString()} of ${metrics.totalQty.toLocaleString()} installed (${metrics.installRate}%)</p>
+      </div>
+    `
+    
+    // Backlog cards
+    const backlogHTML = `
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">
+        <div style="border:1px solid #BBF7D0;border-radius:6px;padding:10px;background:#F0FDF4;">
+          <p style="font-size:16px;font-weight:800;color:#15803D;margin:0;">${metrics.healthy.toLocaleString()}</p>
+          <p style="font-size:8px;color:#166534;font-weight:600;text-transform:uppercase;margin:2px 0 0;">Healthy</p>
+        </div>
+        <div style="border:1px solid #FDE68A;border-radius:6px;padding:10px;background:#FFFBEB;">
+          <p style="font-size:16px;font-weight:800;color:#B45309;margin:0;">${metrics.warning.toLocaleString()}</p>
+          <p style="font-size:8px;color:#92400E;font-weight:600;text-transform:uppercase;margin:2px 0 0;">Warning</p>
+        </div>
+        <div style="border:1px solid #FECACA;border-radius:6px;padding:10px;background:#FEF2F2;">
+          <p style="font-size:16px;font-weight:800;color:#B91C1C;margin:0;">${metrics.critical.toLocaleString()}</p>
+          <p style="font-size:8px;color:#991B1B;font-weight:600;text-transform:uppercase;margin:2px 0 0;">Critical</p>
+        </div>
+        <div style="border:1px solid #E8D0D0;border-radius:6px;padding:10px;background:#FDF7F7;">
+          <p style="font-size:16px;font-weight:800;color:#800000;margin:0;">${metrics.done.toLocaleString()}</p>
+          <p style="font-size:8px;color:#800000;font-weight:600;text-transform:uppercase;margin:2px 0 0;">Done</p>
+        </div>
+      </div>
+    `
+    
+    // Wait for chart images to load, then build the print window
+    Promise.all(chartImages.map(img => new Promise(resolve => { img.onload = resolve; img.onerror = resolve }))).then(() => {
+      // Chart images HTML
+      let chartsHTML = ''
+      
+      // Delivery chart
+      if (chartImages[0]) {
+        chartsHTML += `<div style="border:1px solid #ddd;border-radius:6px;padding:12px;margin-bottom:16px;page-break-inside:avoid;"><h3 style="font-size:11px;font-weight:700;color:#333;margin:0 0 8px;">Volume by Delivery Month</h3><img src="${chartImages[0].src}" style="width:100%;max-height:220px;object-fit:contain;" /></div>`
+      }
+      
+      // Install chart
+      if (chartImages[1]) {
+        chartsHTML += `<div style="border:1px solid #ddd;border-radius:6px;padding:12px;margin-bottom:16px;page-break-inside:avoid;"><h3 style="font-size:11px;font-weight:700;color:#333;margin:0 0 8px;">Volume by Install Month</h3><img src="${chartImages[1].src}" style="width:100%;max-height:220px;object-fit:contain;" /></div>`
+      }
+      
+      // Status pie chart
+      if (chartImages[2]) {
+        chartsHTML += `<div style="border:1px solid #ddd;border-radius:6px;padding:12px;margin-bottom:16px;page-break-inside:avoid;"><h3 style="font-size:11px;font-weight:700;color:#333;margin:0 0 8px;">Installation Status</h3><img src="${chartImages[2].src}" style="width:100%;max-height:220px;object-fit:contain;" /></div>`
+      }
+      
+      // Region pie chart
+      if (chartImages[3]) {
+        chartsHTML += `<div style="border:1px solid #ddd;border-radius:6px;padding:12px;margin-bottom:16px;page-break-inside:avoid;"><h3 style="font-size:11px;font-weight:700;color:#333;margin:0 0 8px;">Regional Allocation</h3><img src="${chartImages[3].src}" style="width:100%;max-height:220px;object-fit:contain;" /></div>`
+      }
+      
+      // Backlog origin pie chart
+      if (chartImages[4]) {
+        chartsHTML += `<div style="border:1px solid #ddd;border-radius:6px;padding:12px;margin-bottom:16px;page-break-inside:avoid;"><h3 style="font-size:11px;font-weight:700;color:#333;margin:0 0 8px;">Backlog Origin Mix</h3><img src="${chartImages[4].src}" style="width:100%;max-height:220px;object-fit:contain;" /></div>`
+      }
+      
+      // Leaderboard table
+      let leaderboardRows = ''
+      metrics.leaderboard.forEach((eng, i) => {
+        leaderboardRows += `
+          <tr>
+            <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:center;">
+              <span style="display:inline-block;width:22px;height:22px;border-radius:6px;font-size:10px;font-weight:800;${i < 3 ? 'background:#800000;color:#fff;' : 'background:#f0f0f0;color:#666;'}">${i+1}</span>
+            </td>
+            <td style="padding:5px 8px;border-bottom:1px solid #eee;font-size:10px;font-weight:600;color:#333;">${eng.name}</td>
+            <td style="padding:5px 8px;border-bottom:1px solid #eee;font-size:10px;text-align:center;color:#800000;font-weight:700;">${(eng.backlogDone || 0).toLocaleString()}</td>
+            <td style="padding:5px 8px;border-bottom:1px solid #eee;font-size:10px;text-align:center;color:#666;">${eng.count || 0}</td>
+            <td style="padding:5px 8px;border-bottom:1px solid #eee;font-size:10px;text-align:center;color:#666;">${(eng.volume || 0).toLocaleString()}</td>
+          </tr>
+        `
+      })
+      
+      const leaderboardHTML = `
+        <div style="border:1px solid #ddd;border-radius:6px;padding:12px;page-break-inside:avoid;">
+          <h3 style="font-size:11px;font-weight:700;color:#800000;margin:0 0 8px;">🏆 Engineer Leaderboard</h3>
+          <table style="width:100%;border-collapse:collapse;">
+            <thead>
+              <tr>
+                <th style="background:#f5f5f5;padding:6px 8px;font-size:8px;text-transform:uppercase;color:#777;text-align:center;">#</th>
+                <th style="background:#f5f5f5;padding:6px 8px;font-size:8px;text-transform:uppercase;color:#777;text-align:left;">Engineer</th>
+                <th style="background:#f5f5f5;padding:6px 8px;font-size:8px;text-transform:uppercase;color:#777;text-align:center;">Done</th>
+                <th style="background:#f5f5f5;padding:6px 8px;font-size:8px;text-transform:uppercase;color:#777;text-align:center;">Tasks</th>
+                <th style="background:#f5f5f5;padding:6px 8px;font-size:8px;text-transform:uppercase;color:#777;text-align:center;">Volume</th>
+              </tr>
+            </thead>
+            <tbody>${leaderboardRows}</tbody>
+          </table>
+        </div>
+      `
+      
+      const printWindow = window.open('', '_blank', 'width=1200,height=800')
+      if (!printWindow) { alert('Popup blocked. Please allow popups.') ; return }
+      
+      printWindow.document.write(`<!DOCTYPE html><html><head><title>${title}</title>`)
+      printWindow.document.write(`<style>`)
+      printWindow.document.write(`@page { size: A4 landscape; margin: 10mm; }`)
+      printWindow.document.write(`body { font-family: Arial, sans-serif; margin: 0; padding: 15px; color: #1A1A1A; }`)
+      printWindow.document.write(`h1 { color: #800000; font-size: 18px; margin: 0 0 4px 0; border-bottom: 2px solid #800000; padding-bottom: 6px; }`)
+      printWindow.document.write(`.filter-label { font-size: 10px; color: #666; margin-bottom: 12px; }`)
+      printWindow.document.write(`* { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }`)
+      printWindow.document.write(`</style></head><body>`)
+      printWindow.document.write(`<h1>${title}</h1>`)
+      printWindow.document.write(`<p class="filter-label">${filterLabel}</p>`)
+      printWindow.document.write(kpiCardsHTML)
+      printWindow.document.write(progressHTML)
+      printWindow.document.write(backlogHTML)
+      printWindow.document.write(`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">`)
+      printWindow.document.write(chartsHTML)
+      printWindow.document.write(`</div>`)
+      printWindow.document.write(leaderboardHTML)
+      printWindow.document.write(`</body></html>`)
+      printWindow.document.close()
+      
+      setTimeout(() => {
+        printWindow.print()
+        printWindow.close()
+      }, 800)
+    })
+  }
 
   if (loading) return <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-gray-200 border-t-maroon rounded-full animate-spin" /></div>
   if (error) return <div className="bg-white rounded-xl border border-gray-100 p-20 text-center"><p className="text-red-500">{error}</p></div>
 
   return (
     <div>
-      <style>{`
-        @media print {
-          @page { size: A4 landscape; margin: 8mm; }
-          html, body { height: auto !important; overflow: visible !important; background: #fff !important; }
-          .h-screen { height: auto !important; }
-          .overflow-y-auto, .overflow-hidden { overflow: visible !important; }
-          main { overflow: visible !important; height: auto !important; padding: 0 !important; margin: 0 !important; }
-          aside, header, .no-print { display: none !important; }
-          .flex-1 { flex: none !important; }
-          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-        }
-      `}</style>
-
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 md:mb-6 no-print">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-gray-900">Deployment Overview</h1>
@@ -89,6 +243,7 @@ export default function Deployment() {
         </div>
       </div>
 
+      {/* Rest of the component remains exactly the same as you pasted */}
       <div className="bg-white rounded-xl border border-gray-100 p-3 md:p-4 mb-4 md:mb-6 flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 md:gap-3 no-print">
         <select value={filterYear} onChange={e => { setFilterYear(e.target.value); setFilterQuarter('All'); setFilterMonth('All') }} className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white outline-none w-full sm:w-auto">
           {years.map(y => <option key={y} value={y}>{y === 'Overall' ? 'Overall View' : `${y} Year`}</option>)}
