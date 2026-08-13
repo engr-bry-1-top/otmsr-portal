@@ -133,21 +133,22 @@ export default function Layout({ children }) {
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-        <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-3 md:px-6 flex-shrink-0">
+        <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-2 md:px-6 flex-shrink-0">
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden text-gray-400 hover:text-gray-600 p-1">
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
           <div className="hidden lg:block" />
 
-          <div className="flex items-center gap-2 ml-auto">
-            {/* My DWAR button — top nav bar next to profile */}
-            <Link to="/my-dwar" className="hidden sm:flex items-center gap-2 hover:bg-maroon/5 text-maroon rounded-lg px-3 py-1.5 text-sm font-medium">
-              <ClipboardList size={16} />
-              My DWAR
+          <div className="flex items-center gap-1.5 md:gap-2 ml-auto">
+            {/* My DWAR button — visible on ALL screen sizes */}
+            <Link to="/my-dwar" className="flex items-center gap-1.5 md:gap-2 hover:bg-maroon/5 text-maroon rounded-lg px-2 md:px-3 py-1.5 text-xs md:text-sm font-medium">
+              <ClipboardList size={16} className="flex-shrink-0" />
+              <span className="hidden sm:inline">My DWAR</span>
+              <span className="sm:hidden">DWAR</span>
             </Link>
 
             <div className="relative">
-              <button onClick={() => setUserMenuOpen(!userMenuOpen)} className="flex items-center gap-2 md:gap-3 hover:bg-gray-50 rounded-lg px-2 md:px-3 py-1.5">
+              <button onClick={() => setUserMenuOpen(!userMenuOpen)} className="flex items-center gap-1.5 md:gap-3 hover:bg-gray-50 rounded-lg px-1.5 md:px-3 py-1.5">
                 <div className="w-8 h-8 rounded-full bg-maroon flex items-center justify-center text-white text-xs font-bold overflow-hidden flex-shrink-0">
                   {avatar ? <img src={avatar} alt="" className="w-full h-full object-cover" /> : user.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2)}
                 </div>
