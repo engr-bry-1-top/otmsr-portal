@@ -1,7 +1,13 @@
 import { useState, useEffect } from 'react'
 import { Search, X } from 'lucide-react'
+import emailjs from '@emailjs/browser'
 
 const API_URL = 'https://script.google.com/macros/s/AKfycbwhqFi9pK9uzhDCqLc5mVhpokaA9HWB9f1HzQ5wRErTLTK181U4h0IHsqLw-6CWalU/exec'
+
+const EMAILJS_SERVICE_ID = 'service_ebdrpxv'
+const EMAILJS_ACK_TEMPLATE_ID = 'template_mqq1xa3'
+const EMAILJS_STATUS_TEMPLATE_ID = 'template_opoatcr'
+const EMAILJS_PUBLIC_KEY = 'SgiWAx7MrHKxUaAJk'
 
 export default function CustomerConcerns() {
   const [concerns, setConcerns] = useState([])
@@ -10,6 +16,8 @@ export default function CustomerConcerns() {
   const [statusFilter, setStatusFilter] = useState('All')
   const [regionFilter, setRegionFilter] = useState('All')
   const [selected, setSelected] = useState(null)
+  const [emailSending, setEmailSending] = useState(false)
+  const [emailMessage, setEmailMessage] = useState(null)
 
   const fetchConcerns = async () => {
     setLoading(true)
@@ -23,10 +31,53 @@ export default function CustomerConcerns() {
 
   useEffect(() => { fetchConcerns() }, [])
 
+  const sendStatusUpdateEmail = async (concern, newStatus) => {
+    if (!concern.email) {
+      setEmailMessage({ type: 'error', text: 'Customer has no email on file' })
+      setTimeout(() => setEmailMessage(null), 3000)
+      return
+    }
+    
+    setEmailSending(true)
+    setEmailMessage(null)
+    
+    try {
+      const templateParams = {
+        to_email: concern.email,
+        subject: `Concern status update — ${concern.reference || 'Ref #'}`,
+        customer_name: concern.name || 'Customer',
+        reference_number: concern.reference || 'N/A',
+        status: newStatus,
+        remarks: concern.remarks || 'Your concern is being processed.',
+      }
+      
+      await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        EMAILJS_STATUS_TEMPLATE_ID,
+        templateParams,
+        EMAILJS_PUBLIC_KEY
+      )
+      
+      setEmailMessage({ type: 'success', text: `Email sent to ${concern.email}` })
+      setTimeout(() => setEmailMessage(null), 3000)
+    } catch (err) {
+      console.error('Status email failed:', err)
+      setEmailMessage({ type: 'error', text: 'Failed to send email: ' + err.message })
+      setTimeout(() => setEmailMessage(null), 5000)
+    }
+    setEmailSending(false)
+  }
+
   const updateStatus = async (rowIndex, newStatus) => {
     await fetch(`${API_URL}?api=concern_update&row=${rowIndex}&status=${encodeURIComponent(newStatus)}`)
     setConcerns(prev => prev.map(c => c.rowIndex === rowIndex ? { ...c, status: newStatus } : c))
     if (selected?.rowIndex === rowIndex) setSelected(prev => ({ ...prev, status: newStatus }))
+    
+    // Send email to customer
+    const concern = concerns.find(c => c.rowIndex === rowIndex)
+    if (concern) {
+      await sendStatusUpdateEmail(concern, newStatus)
+    }
   }
 
   const regions = [...new Set(concerns.map(c => c.region).filter(Boolean))].sort()
@@ -66,6 +117,17 @@ export default function CustomerConcerns() {
         <h1 className="text-xl md:text-2xl font-bold text-gray-900">Customer Concerns</h1>
         <p className="text-sm text-gray-500 mt-1">Track and manage customer issues</p>
       </div>
+
+      {emailMessage && (
+        <div className={`mb-3 md:mb-4 px-3 md:px-4 py-2.5 md:py-3 rounded-xl text-xs md:text-sm font-medium ${
+          emailMessage.type === 'success' 
+            ? 'bg-emerald-50 border border-emerald-200 text-emerald-700' 
+            : 'bg-red-50 border border-red-200 text-red-700'
+        }`}>
+          {emailMessage.type === 'success' ? '✓ ' : '✗ '}
+          {emailMessage.text}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-3 mb-4 md:mb-6">
         {[
@@ -127,7 +189,10 @@ export default function CustomerConcerns() {
                     <td className="px-3 md:px-4 py-2 md:py-3 text-sm text-gray-500 whitespace-nowrap">{c.region}</td>
                     <td className="px-3 md:px-4 py-2 md:py-3 text-sm text-gray-700 truncate max-w-[150px]" title={c.concern}>{c.concern}</td>
                     <td className="px-3 md:px-4 py-2 md:py-3" onClick={e => e.stopPropagation()}>
-                      <select value={c.status} onChange={e => updateStatus(c.rowIndex, e.target.value)}
+                      <select 
+                        value={c.status} 
+                        onChange={e => updateStatus(c.rowIndex, e.target.value)}
+                        disabled={emailSending}
                         className={`text-xs font-semibold px-2 py-1 rounded-full border cursor-pointer outline-none ${getStatusClass(c.status)}`}>
                         <option value="New">New</option><option value="In Progress">In Progress</option>
                         <option value="Resolved">Resolved</option><option value="Closed">Closed</option>

@@ -2,18 +2,45 @@ import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { CreditCard, BookOpen, FileText, ShoppingCart, BarChart3, TrendingUp, Calendar, Star, Search, Headset, ClipboardCheck, ArrowRight } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import AnnouncementModal from '../components/AnnouncementModal'
 
 export default function Dashboard() {
   const navigate = useNavigate()
   const [user, setUser] = useState(null)
   const [stats, setStats] = useState({ srTotal: 0, srPending: 0, manuals: 0 })
+  const [showAnnouncements, setShowAnnouncements] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth <= 768)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   useEffect(() => {
     const stored = localStorage.getItem('otmsr_user')
     if (!stored) { navigate('/'); return }
-    setUser(JSON.parse(stored))
+    const userData = JSON.parse(stored)
+    setUser(userData)
     fetchStats()
+    checkAnnouncements(userData)
   }, [navigate])
+
+  const checkAnnouncements = async (userData) => {
+    try {
+      const { data } = await supabase
+        .from('announcements')
+        .select('id')
+        .eq('username', userData.username)
+        .eq('is_read', false)
+        .limit(1)
+      
+      if (data && data.length > 0) {
+        setShowAnnouncements(true)
+      }
+    } catch (err) { console.error(err) }
+  }
 
   const fetchStats = async () => {
     const { data: sr } = await supabase.from('service_requests').select('status')
@@ -71,6 +98,13 @@ export default function Dashboard() {
           </Link>
         ))}
       </div>
+
+      {/* Announcement Modal */}
+      <AnnouncementModal 
+        isOpen={showAnnouncements}
+        onClose={() => setShowAnnouncements(false)}
+        isMobile={isMobile}
+      />
     </div>
   )
 }

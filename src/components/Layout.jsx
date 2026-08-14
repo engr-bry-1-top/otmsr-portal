@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
-import { LayoutDashboard, CreditCard, BookOpen, FileText, ShoppingCart, Settings, LogOut, Menu, X, ChevronLeft, BarChart3, TrendingUp, Search, ClipboardCheck, Calendar, Headset, Star, ClipboardList } from 'lucide-react'
+import { LayoutDashboard, CreditCard, BookOpen, FileText, ShoppingCart, Settings, LogOut, Menu, X, ChevronLeft, BarChart3, TrendingUp, Search, ClipboardCheck, Calendar, Headset, Star, ClipboardList, Bell, Megaphone } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 export default function Layout({ children }) {
@@ -12,6 +12,9 @@ export default function Layout({ children }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
+  const [notifications, setNotifications] = useState([])
+  const [notificationOpen, setNotificationOpen] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
 
   useEffect(() => {
     const stored = localStorage.getItem('otmsr_user')
@@ -21,9 +24,73 @@ export default function Layout({ children }) {
     fetchAvatar(userData)
   }, [navigate])
 
+  useEffect(() => {
+    if (user?.username) {
+      fetchNotifications()
+      const interval = setInterval(fetchNotifications, 30000)
+      return () => clearInterval(interval)
+    }
+  }, [user])
+
   const fetchAvatar = async (userData) => {
     const { data } = await supabase.from('profiles').select('avatar_url').eq('username', userData.username).single()
     if (data?.avatar_url) setAvatar(data.avatar_url)
+  }
+
+  const fetchNotifications = async () => {
+    try {
+      const { data } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('username', user.username)
+        .order('created_at', { ascending: false })
+        .limit(20)
+      
+      const { data: annData } = await supabase
+        .from('announcements')
+        .select('*')
+        .eq('username', user.username)
+        .eq('is_read', false)
+        .order('created_at', { ascending: false })
+        .limit(10)
+      
+      const combined = [
+        ...(annData || []).map(a => ({ ...a, type: 'announcement' })),
+        ...(data || []).map(n => ({ ...n, type: 'notification' }))
+      ]
+      
+      setNotifications(combined)
+      setUnreadCount(combined.filter(n => !n.is_read).length)
+    } catch (err) { console.error(err) }
+  }
+
+  const markNotificationRead = async (id, link) => {
+    try {
+      await supabase.from('notifications').update({ is_read: true }).eq('id', id)
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n))
+      setUnreadCount(prev => Math.max(0, prev - 1))
+      if (link) navigate(link)
+      setNotificationOpen(false)
+    } catch (err) { console.error(err) }
+  }
+
+  const markAnnouncementRead = async (id, link) => {
+    try {
+      await supabase.from('announcements').update({ is_read: true }).eq('id', id)
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n))
+      setUnreadCount(prev => Math.max(0, prev - 1))
+      if (link) navigate(link)
+      setNotificationOpen(false)
+    } catch (err) { console.error(err) }
+  }
+
+  const markAllRead = async () => {
+    try {
+      await supabase.from('notifications').update({ is_read: true }).eq('username', user.username).eq('is_read', false)
+      await supabase.from('announcements').update({ is_read: true }).eq('username', user.username).eq('is_read', false)
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
+      setUnreadCount(0)
+    } catch (err) { console.error(err) }
   }
 
   const handleLogout = () => {
@@ -36,6 +103,7 @@ export default function Layout({ children }) {
 
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/announcements', label: 'Announcements', icon: Megaphone },
     { path: '/deployment', label: 'Deployment', icon: BarChart3 },
     { path: '/team-performance', label: 'Team Performance', icon: TrendingUp },
     { path: '/card/edit', label: 'Calling Card', icon: CreditCard },
@@ -141,7 +209,70 @@ export default function Layout({ children }) {
           <div className="hidden lg:block" />
 
           <div className="flex items-center gap-1.5 md:gap-2 ml-auto">
-            {/* My DWAR button — visible on ALL screen sizes */}
+            {/* Notification Bell */}
+            <div className="relative">
+              <button 
+                onClick={() => setNotificationOpen(!notificationOpen)} 
+                className="relative flex items-center justify-center w-9 h-9 rounded-lg hover:bg-gray-50 text-gray-500 hover:text-maroon transition-colors"
+                title="Notifications"
+              >
+                <Bell size={18} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {notificationOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setNotificationOpen(false)} />
+                  <div className="fixed left-3 right-3 top-16 md:absolute md:left-auto md:right-0 md:top-full md:mt-2 md:w-96 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-20 max-h-[60vh] md:max-h-[400px] overflow-y-auto">
+                    <div className="flex items-center justify-between px-4 py-2 border-b border-gray-50">
+                      <p className="text-sm font-semibold text-gray-800">Notifications</p>
+                      {unreadCount > 0 && (
+                        <button onClick={markAllRead} className="text-xs text-maroon hover:text-maroon-dark font-medium">
+                          Mark all read
+                        </button>
+                      )}
+                    </div>
+                    
+                    {notifications.length === 0 ? (
+                      <div className="px-4 py-8 text-center">
+                        <Bell size={28} className="mx-auto text-gray-200 mb-2" />
+                        <p className="text-sm text-gray-400">No notifications</p>
+                      </div>
+                    ) : (
+                      notifications.map(notif => (
+                        <button
+                          key={`${notif.type}-${notif.id}`}
+                          onClick={() => notif.type === 'announcement' 
+                            ? markAnnouncementRead(notif.id, notif.link)
+                            : markNotificationRead(notif.id, notif.link)
+                          }
+                          className={`flex items-start gap-3 px-4 py-3 w-full text-left hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0 ${
+                            !notif.is_read ? 'bg-maroon/5' : ''
+                          }`}
+                        >
+                          <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${!notif.is_read ? (notif.type === 'announcement' ? 'bg-amber-500' : 'bg-maroon') : 'bg-gray-200'}`} />
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-medium ${!notif.is_read ? 'text-gray-900' : 'text-gray-500'} break-words`}>
+                              {notif.type === 'announcement' ? '📢 ' : ''}{notif.title}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-0.5 break-words whitespace-normal">{notif.message}</p>
+                            <p className="text-[10px] text-gray-400 mt-1">
+                              {new Date(notif.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* My DWAR button */}
             <Link to="/my-dwar" className="flex items-center gap-1.5 md:gap-2 hover:bg-maroon/5 text-maroon rounded-lg px-2 md:px-3 py-1.5 text-xs md:text-sm font-medium">
               <ClipboardList size={16} className="flex-shrink-0" />
               <span className="hidden sm:inline">My DWAR</span>

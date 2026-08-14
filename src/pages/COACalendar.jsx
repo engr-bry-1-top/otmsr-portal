@@ -30,6 +30,11 @@ const ENGINEERS = [
   'Brian Ezekiel D. Batalon'
 ]
 
+const ENGINEER_USERNAMES = [
+  'nowiel.onetop', 'rob.onetop', 'felix.onetop', 'pong.onetop',
+  'keith.onetop', 'josh.onetop', 'rey.onetop', 'gerson.onetop', 'bry.onetop'
+]
+
 const ADMIN_USERS = ['rob.onetop', 'josh.onetop', 'bry.onetop']
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
@@ -92,6 +97,21 @@ export default function COACalendar() {
       setAssignments(map)
     } catch (err) { console.error(err) }
     setLoading(false)
+  }
+
+  const createNotifications = async () => {
+    try {
+      for (const username of ENGINEER_USERNAMES) {
+        await supabase.from('notifications').insert({
+          username: username,
+          title: 'COA Schedule Updated',
+          message: `Your Calendar of Activities for ${month} ${year} has been updated. Please review your schedule.`,
+          link: '/coa',
+          is_read: false,
+          created_at: new Date().toISOString(),
+        })
+      }
+    } catch (err) { console.error('Notification error:', err) }
   }
 
   const daysInMonth = new Date(parseInt(year), MONTHS.indexOf(month) + 1, 0).getDate()
@@ -180,7 +200,6 @@ export default function COACalendar() {
       const toKeep = selectedEngs
       const toRemove = originallyAssigned.filter(e => !toKeep.includes(e))
       
-      // Save for checked engineers across the date range
       for (const eng of toKeep) {
         for (const d of daysToSave) {
           await supabase.from('coa_activities').upsert({
@@ -194,7 +213,6 @@ export default function COACalendar() {
         }
       }
       
-      // Clear for unchecked engineers (only for the original day)
       for (const eng of toRemove) {
         await supabase.from('coa_activities')
           .update({ activity: '', updated_at: new Date().toISOString() })
@@ -203,6 +221,9 @@ export default function COACalendar() {
           .eq('engineer', eng)
           .eq('day', editModal.day)
       }
+      
+      // Create notifications for all engineers
+      await createNotifications()
       
       setEditModal(null)
       setDeleteMode(false)
@@ -227,6 +248,9 @@ export default function COACalendar() {
           .eq('engineer', eng)
           .eq('day', editModal.day)
       }
+      
+      await createNotifications()
+      
       setEditModal(null)
       setDeleteMode(false)
       fetchCOA()
@@ -245,6 +269,9 @@ export default function COACalendar() {
         .eq('month_name', month)
         .eq('year', parseInt(year))
         .eq('day', editModal.day)
+      
+      await createNotifications()
+      
       setEditModal(null)
       setDeleteMode(false)
       fetchCOA()
@@ -274,6 +301,9 @@ export default function COACalendar() {
           }, { onConflict: 'month_name,year,engineer,day' })
         }
       }
+      
+      await createNotifications()
+      
       setInitModal(false)
       setMonth(nextMonth)
       setYear(nextYear.toString())

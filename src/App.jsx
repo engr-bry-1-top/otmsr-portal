@@ -20,6 +20,8 @@ import MyDwar from './pages/MyDwar'
 import TeamDwar from './pages/TeamDwar'
 import MySoa from './pages/MySoa'
 import TeamSoa from './pages/TeamSoa'
+import AnnouncementManager from './pages/AnnouncementManager'
+
 
 function App() {
   return (
@@ -44,6 +46,7 @@ function App() {
       <Route path="/team-dwar" element={<Layout><TeamDwar /></Layout>} />
       <Route path="/my-soa" element={<Layout><MySoa /></Layout>} />
       <Route path="/team-soa" element={<Layout><TeamSoa /></Layout>} />
+      <Route path="/announcements" element={<Layout><AnnouncementManager /></Layout>} />
     </Routes>
   )
 }
