@@ -32,6 +32,26 @@ export default function Layout({ children }) {
     }
   }, [user])
 
+  useEffect(() => {
+    if (user?.username) {
+      // Prompt for notification permission after 3 seconds
+      const timer = setTimeout(() => {
+        if (window.OneSignalDeferred) {
+          window.OneSignalDeferred.push(async function(OneSignal) {
+            try {
+              const isSubscribed = await OneSignal.User.PushSubscription.optedIn
+              if (!isSubscribed) {
+                OneSignal.showSlidedownPrompt()
+              }
+            } catch (err) { console.error(err) }
+          })
+        }
+      }, 3000)
+      
+      return () => clearTimeout(timer)
+    }
+  }, [user])
+
   const fetchAvatar = async (userData) => {
     const { data } = await supabase.from('profiles').select('avatar_url').eq('username', userData.username).single()
     if (data?.avatar_url) setAvatar(data.avatar_url)

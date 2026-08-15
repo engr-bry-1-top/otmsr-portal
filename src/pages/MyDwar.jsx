@@ -3,22 +3,115 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { Printer, Plus, Trash2, Save, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
-const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
+const QUARTERS = ['Q1', 'Q2', 'Q3', 'Q4']
+
+const QUARTER_MONTHS = {
+  Q1: [0, 1, 2],   // Jan, Feb, Mar
+  Q2: [3, 4, 5],   // Apr, May, Jun
+  Q3: [6, 7, 8],   // Jul, Aug, Sep
+  Q4: [9, 10, 11], // Oct, Nov, Dec
+}
 
 const ADMIN_USERS = ['rob.onetop', 'josh.onetop', 'bry.onetop']
+
+function getWeeksInQuarter(quarter, year) {
+  const months = QUARTER_MONTHS[quarter]
+  const firstMonth = months[0]
+  const lastMonth = months[2]
+  
+  const firstDate = new Date(parseInt(year), firstMonth, 1)
+  const lastDate = new Date(parseInt(year), lastMonth + 1, 0)
+  
+  // Find first Monday of the quarter
+  const firstMonday = new Date(firstDate)
+  while (firstMonday.getDay() !== 1) {
+    firstMonday.setDate(firstMonday.getDate() + 1)
+  }
+  
+  // Count Monday-Friday cycles that overlap with the quarter
+  const diffDays = Math.floor((lastDate - firstMonday) / (1000 * 60 * 60 * 24))
+  const weeks = Math.ceil((diffDays + 1) / 7)
+  
+  return weeks
+}
+
+function getWorkingDaysForWeek(week, quarter, year) {
+  const months = QUARTER_MONTHS[quarter]
+  const firstMonth = months[0]
+  const lastMonth = months[2]
+  
+  const firstDate = new Date(parseInt(year), firstMonth, 1)
+  const lastDate = new Date(parseInt(year), lastMonth + 1, 0)
+  
+  // Find first Monday of the quarter
+  const firstMonday = new Date(firstDate)
+  while (firstMonday.getDay() !== 1) {
+    firstMonday.setDate(firstMonday.getDate() + 1)
+  }
+  
+  // Calculate start date for this week
+  const weekStart = new Date(firstMonday)
+  weekStart.setDate(weekStart.getDate() + (week - 1) * 7)
+  
+  const days = []
+  const totalWeeks = getWeeksInQuarter(quarter, year)
+  const isLastWeek = week === totalWeeks
+  
+  if (isLastWeek) {
+    // Last week: include ALL working days (Mon-Fri), even if crossing into next quarter
+    for (let i = 0; i < 5; i++) {
+      const d = new Date(weekStart)
+      d.setDate(d.getDate() + i)
+      const dayOfWeek = d.getDay()
+      if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+        days.push(d)
+      }
+    }
+  } else {
+    // Non-last weeks: Mon-Fri within quarter
+    for (let i = 0; i < 5; i++) {
+      const d = new Date(weekStart)
+      d.setDate(d.getDate() + i)
+      const dayOfWeek = d.getDay()
+      if (dayOfWeek >= 1 && dayOfWeek <= 5 && d <= lastDate) {
+        days.push(d)
+      }
+    }
+  }
+  
+  return days
+}
+
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
 export default function MyDwar() {
   const navigate = useNavigate()
   const location = useLocation()
   const currentDate = new Date()
-  const currentMonthName = MONTHS[currentDate.getMonth()]
+  const currentMonth = currentDate.getMonth()
   const currentYearString = currentDate.getFullYear().toString()
-  const currentWeek = Math.ceil(currentDate.getDate() / 7)
+  
+  // Determine current quarter
+  let currentQuarter = 'Q1'
+  if (currentMonth >= 3 && currentMonth <= 5) currentQuarter = 'Q2'
+  else if (currentMonth >= 6 && currentMonth <= 8) currentQuarter = 'Q3'
+  else if (currentMonth >= 9 && currentMonth <= 11) currentQuarter = 'Q4'
+  
+  // Determine current week in quarter
+  const currentWeekCalc = getWeeksInQuarter(currentQuarter, currentYearString)
+  const months = QUARTER_MONTHS[currentQuarter]
+  const quarterStart = new Date(parseInt(currentYearString), months[0], 1)
+  const firstMonday = new Date(quarterStart)
+  while (firstMonday.getDay() !== 1) {
+    firstMonday.setDate(firstMonday.getDate() + 1)
+  }
+  const diffDays = Math.floor((currentDate - firstMonday) / (1000 * 60 * 60 * 24))
+  const currentWeekInQuarter = Math.max(1, Math.min(currentWeekCalc, Math.floor(diffDays / 7) + 1))
 
   const [user, setUser] = useState(null)
-  const [month, setMonth] = useState(currentMonthName)
+  const [quarter, setQuarter] = useState(currentQuarter)
   const [year, setYear] = useState(currentYearString)
-  const [week, setWeek] = useState(currentWeek)
+  const [week, setWeek] = useState(currentWeekInQuarter)
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
@@ -33,12 +126,14 @@ export default function MyDwar() {
   const [deleteModal, setDeleteModal] = useState(null)
   const [saveMessage, setSaveMessage] = useState(null)
   const [printModal, setPrintModal] = useState(false)
-  const [printStartMonth, setPrintStartMonth] = useState(currentMonthName)
-  const [printEndMonth, setPrintEndMonth] = useState(currentMonthName)
+  const [printStartQuarter, setPrintStartQuarter] = useState(currentQuarter)
+  const [printEndQuarter, setPrintEndQuarter] = useState(currentQuarter)
   const [printStartWeek, setPrintStartWeek] = useState(1)
-  const [printEndWeek, setPrintEndWeek] = useState(5)
+  const [printEndWeek, setPrintEndWeek] = useState(getWeeksInQuarter(currentQuarter, currentYearString))
   const [printYear, setPrintYear] = useState(currentYearString)
   const [isMobile, setIsMobile] = useState(false)
+
+  const weeksInQuarter = getWeeksInQuarter(quarter, year)
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth <= 768)
@@ -66,7 +161,14 @@ export default function MyDwar() {
 
   useEffect(() => {
     if (selectedUser?.username) fetchEntries()
-  }, [month, year, week, selectedUser])
+  }, [quarter, year, week, selectedUser])
+
+  useEffect(() => {
+    // Reset week if out of range when quarter changes
+    const maxWeeks = getWeeksInQuarter(quarter, year)
+    if (week > maxWeeks) setWeek(maxWeeks)
+    setPrintEndWeek(maxWeeks)
+  }, [quarter, year])
 
   const fetchEntries = async () => {
     setLoading(true)
@@ -78,7 +180,7 @@ export default function MyDwar() {
         .from('dwar_entries')
         .select('*')
         .eq('username', username)
-        .eq('month_name', month)
+        .eq('quarter', quarter)
         .eq('year', parseInt(year))
         .eq('week', week)
         .order('day')
@@ -88,80 +190,16 @@ export default function MyDwar() {
     setLoading(false)
   }
 
-  const getDayInfo = (dayNum) => {
-    const monthIdx = MONTHS.indexOf(month)
-    const daysInMonth = new Date(parseInt(year), monthIdx + 1, 0).getDate()
-    
-    if (dayNum <= daysInMonth) {
-      const dateObj = new Date(parseInt(year), monthIdx, dayNum)
-      return {
-        dayNum,
-        dayName: dateObj.toLocaleDateString('en-US', { weekday: 'short' }),
-        label: `${dateObj.toLocaleDateString('en-US', { weekday: 'short' })} ${dayNum}`,
-        actualDay: dayNum,
-        actualMonth: month,
-        actualMonthShort: month.substring(0, 3),
-        actualYear: parseInt(year)
-      }
-    } else {
-      const actualDay = dayNum - daysInMonth
-      let nextMonthIdx = monthIdx + 1
-      let nextYear = parseInt(year)
-      if (nextMonthIdx > 11) {
-        nextMonthIdx = 0
-        nextYear++
-      }
-      const dateObj = new Date(nextYear, nextMonthIdx, actualDay)
-      const nextMonthName = MONTHS[nextMonthIdx]
-      return {
-        dayNum,
-        dayName: dateObj.toLocaleDateString('en-US', { weekday: 'short' }),
-        label: `${dateObj.toLocaleDateString('en-US', { weekday: 'short' })} ${actualDay} (${nextMonthName.substring(0, 3)})`,
-        actualDay,
-        actualMonth: nextMonthName,
-        actualMonthShort: nextMonthName.substring(0, 3),
-        actualYear: nextYear
-      }
-    }
-  }
+  const daysInWeek = getWorkingDaysForWeek(week, quarter, year)
 
-  const getWorkingDaysForWeek = (wk) => {
-    const days = []
-    const monthIdx = MONTHS.indexOf(month)
-    const daysInMonth = new Date(parseInt(year), monthIdx + 1, 0).getDate()
+  const getDayLabel = (dateObj) => {
+    const dayNum = dateObj.getDate()
+    const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' })
+    const monthName = MONTH_NAMES[dateObj.getMonth()]
+    const monthShort = monthName.substring(0, 3)
     
-    if (wk >= 1 && wk <= 5) {
-      const startDay = (wk - 1) * 7 + 1
-      
-      for (let offset = 0; offset < 7; offset++) {
-        const d = startDay + offset
-        
-        let actualMonth = monthIdx
-        let actualDay = d
-        let actualYear = parseInt(year)
-        
-        if (d > daysInMonth) {
-          actualDay = d - daysInMonth
-          actualMonth++
-          if (actualMonth > 11) {
-            actualMonth = 0
-            actualYear++
-          }
-        }
-        
-        const dateObj = new Date(actualYear, actualMonth, actualDay)
-        const dayOfWeek = dateObj.getDay()
-        
-        if (dayOfWeek >= 1 && dayOfWeek <= 5) {
-          days.push(d)
-        }
-      }
-    }
-    
-    return days
+    return `${dayName} ${dayNum} ${monthShort}`
   }
-
-  const daysInWeek = getWorkingDaysForWeek(week)
 
   const openEditModal = (day, existing = null) => {
     setEditModal({ day })
@@ -183,12 +221,17 @@ export default function MyDwar() {
     setSaving(true)
     setSaveMessage(null)
     try {
+      // Find the date object for this day
+      const dateObj = daysInWeek.find(d => d.getDate() === editModal.day)
+      const monthName = dateObj ? MONTH_NAMES[dateObj.getMonth()] : 'January'
+      
       const payload = {
         username: selectedUser.username,
         full_name: selectedUser.full_name,
         contact: selectedUser.contact || '',
         email: selectedUser.email || '',
-        month_name: month,
+        quarter: quarter,
+        month_name: monthName,
         year: parseInt(year),
         week: week,
         day: editModal.day,
@@ -197,7 +240,7 @@ export default function MyDwar() {
       }
       
       await supabase.from('dwar_entries').upsert(payload, {
-        onConflict: 'username,month_name,year,week,day'
+        onConflict: 'username,quarter,year,week,day'
       })
       
       setEditModal(null)
@@ -218,7 +261,7 @@ export default function MyDwar() {
       await supabase.from('dwar_entries')
         .delete()
         .eq('username', selectedUser.username)
-        .eq('month_name', month)
+        .eq('quarter', quarter)
         .eq('year', parseInt(year))
         .eq('week', week)
         .eq('day', deleteModal)
@@ -273,11 +316,11 @@ export default function MyDwar() {
   }
 
   const executePrint = async () => {
-    const startMonthIdx = MONTHS.indexOf(printStartMonth)
-    const endMonthIdx = MONTHS.indexOf(printEndMonth)
+    const startQuarterIdx = QUARTERS.indexOf(printStartQuarter)
+    const endQuarterIdx = QUARTERS.indexOf(printEndQuarter)
     
-    if (startMonthIdx > endMonthIdx) {
-      alert('Start month must be before or equal to end month')
+    if (startQuarterIdx > endQuarterIdx) {
+      alert('Start quarter must be before or equal to end quarter')
       return
     }
     
@@ -286,9 +329,9 @@ export default function MyDwar() {
       return
     }
     
-    const monthsToPrint = []
-    for (let m = startMonthIdx; m <= endMonthIdx; m++) {
-      monthsToPrint.push(MONTHS[m])
+    const quartersToPrint = []
+    for (let q = startQuarterIdx; q <= endQuarterIdx; q++) {
+      quartersToPrint.push(QUARTERS[q])
     }
     
     const weeksToPrint = []
@@ -301,55 +344,27 @@ export default function MyDwar() {
       .select('*')
       .eq('username', selectedUser.username)
       .eq('year', parseInt(printYear))
-      .in('month_name', monthsToPrint)
+      .in('quarter', quartersToPrint)
       .in('week', weeksToPrint)
-      .order('month_name')
+      .order('quarter')
       .order('week')
       .order('day')
     
     let allHTML = ''
     
-    monthsToPrint.forEach(mn => {
-      weeksToPrint.forEach(wk => {
-        const weekEntries = (rangeEntries || []).filter(e => e.month_name === mn && e.week === wk)
-        const monthIdx = MONTHS.indexOf(mn)
-        const daysInThisMonth = new Date(parseInt(printYear), monthIdx + 1, 0).getDate()
-        const daysInThisWeek = []
-        
-        if (wk >= 1 && wk <= 5) {
-          const startD = (wk - 1) * 7 + 1
-          
-          for (let offset = 0; offset < 7; offset++) {
-            const d = startD + offset
-            
-            let actualMonth = monthIdx
-            let actualDay = d
-            let actualYear = parseInt(printYear)
-            
-            if (d > daysInThisMonth) {
-              actualDay = d - daysInThisMonth
-              actualMonth++
-              if (actualMonth > 11) {
-                actualMonth = 0
-                actualYear++
-              }
-            }
-            
-            const dateObj = new Date(actualYear, actualMonth, actualDay)
-            const dayOfWeek = dateObj.getDay()
-            
-            if (dayOfWeek >= 1 && dayOfWeek <= 5) {
-              daysInThisWeek.push({ 
-                day: d, 
-                label: `${dateObj.toLocaleDateString('en-US', { weekday: 'short' })} ${actualDay}${actualMonth !== monthIdx ? ` (${MONTHS[actualMonth].substring(0, 3)})` : ''}` 
-              })
-            }
-          }
-        }
+    quartersToPrint.forEach(qtr => {
+      const maxWeeks = getWeeksInQuarter(qtr, printYear)
+      const actualEndWeek = Math.min(printEndWeek, maxWeeks)
+      
+      for (let wk = printStartWeek; wk <= actualEndWeek; wk++) {
+        const weekEntries = (rangeEntries || []).filter(e => e.quarter === qtr && e.week === wk)
+        const workingDays = getWorkingDaysForWeek(wk, qtr, printYear)
         
         let rowsHTML = ''
-        daysInThisWeek.forEach(({ day, label }) => {
-          const entry = weekEntries.find(e => e.day === day)
+        workingDays.forEach(dateObj => {
+          const dayNum = dateObj.getDate()
+          const entry = weekEntries.find(e => e.day === dayNum)
+          const label = getDayLabel(dateObj)
           
           rowsHTML += `
             <tr>
@@ -368,14 +383,14 @@ export default function MyDwar() {
             <div style="text-align:center;margin-bottom:10px;">
               <h2 style="color:#800000;font-size:14px;margin:0 0 3px;">DAILY WORK ACCOMPLISHMENT REPORT</h2>
               <p style="font-size:10px;color:#666;margin:2px 0;"><strong>${selectedUser?.full_name || ''}</strong> | ${selectedUser?.contact || ''} | ${selectedUser?.email || ''}</p>
-              <p style="font-size:10px;color:#666;margin:2px 0;">${mn} ${printYear} — Week ${wk} (Mon-Fri)</p>
+              <p style="font-size:10px;color:#666;margin:2px 0;">${qtr} ${printYear} — Week ${wk}</p>
             </div>
             <table style="width:100%;border-collapse:collapse;">
               <thead>
                 <tr>
                   <th style="background:#800000;color:#fff;padding:5px;font-size:8px;text-transform:uppercase;border:1px solid #800000;">Date</th>
                   <th style="background:#800000;color:#fff;padding:5px;font-size:8px;text-transform:uppercase;border:1px solid #800000;">Time In</th>
-                  <th style="background:#800000;color:#fff;padding:5px;font-size:8px;text-transform:uppercase;border:1px solid #800000;">Time Out</th>
+                  <th style="background:#800000;color:#800000;padding:5px;font-size:8px;text-transform:uppercase;border:1px solid #800000;">Time Out</th>
                   <th style="background:#800000;color:#fff;padding:5px;font-size:8px;text-transform:uppercase;border:1px solid #800000;">Work Schedule</th>
                   <th style="background:#800000;color:#fff;padding:5px;font-size:8px;text-transform:uppercase;border:1px solid #800000;">Activity Done</th>
                   <th style="background:#800000;color:#fff;padding:5px;font-size:8px;text-transform:uppercase;border:1px solid #800000;">Remarks</th>
@@ -386,7 +401,7 @@ export default function MyDwar() {
           </div>
           <hr style="border: none; border-top: 2px dashed #ccc; margin: 15px 0;" />
         `
-      })
+      }
     })
     
     const printWindow = window.open('', '_blank', 'width=900,height=1100')
@@ -455,30 +470,18 @@ export default function MyDwar() {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-100 p-2.5 md:p-4 mb-3 md:mb-6 flex flex-wrap items-center gap-1.5 md:gap-3 no-print">
-        <select value={month} onChange={e => setMonth(e.target.value)} className="flex-1 min-w-[100px] px-2 md:px-3 py-2 text-xs md:text-sm border border-gray-200 rounded-lg bg-white outline-none">
-          {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
+        <select value={quarter} onChange={e => setQuarter(e.target.value)} className="flex-1 min-w-[80px] px-2 md:px-3 py-2 text-xs md:text-sm border border-gray-200 rounded-lg bg-white outline-none">
+          {QUARTERS.map(q => <option key={q} value={q}>{q}</option>)}
         </select>
         <select value={year} onChange={e => setYear(e.target.value)} className="px-2 md:px-3 py-2 text-xs md:text-sm border border-gray-200 rounded-lg bg-white outline-none">
           {['2025','2026','2027'].map(y => <option key={y} value={y}>{y}</option>)}
         </select>
         <select value={week} onChange={e => setWeek(parseInt(e.target.value))} className="flex-1 min-w-[90px] px-2 md:px-3 py-2 text-xs md:text-sm border border-gray-200 rounded-lg bg-white outline-none">
-          {isMobile ? (
-            <>
-              <option value={1}>W1</option>
-              <option value={2}>W2</option>
-              <option value={3}>W3</option>
-              <option value={4}>W4</option>
-              <option value={5}>W5</option>
-            </>
-          ) : (
-            <>
-              <option value={1}>Week 1</option>
-              <option value={2}>Week 2</option>
-              <option value={3}>Week 3</option>
-              <option value={4}>Week 4</option>
-              <option value={5}>Week 5</option>
-            </>
-          )}
+          {Array.from({ length: weeksInQuarter }).map((_, i) => (
+            <option key={i + 1} value={i + 1}>
+              {isMobile ? `W${i + 1}` : `Week ${i + 1}`}
+            </option>
+          ))}
         </select>
       </div>
 
@@ -501,7 +504,7 @@ export default function MyDwar() {
               <span className="truncate max-w-[150px] md:max-w-none">{selectedUser?.email || '—'}</span>
             )}
           </span>
-          <span><strong className="text-gray-500">Month:</strong> {month} {year}</span>
+          <span><strong className="text-gray-500">Quarter:</strong> {quarter} {year}</span>
           {isOwnDwar && !showContactEdit && (
             <button onClick={() => { setShowContactEdit(true); setEditContact(selectedUser?.contact || ''); setEditEmail(selectedUser?.email || '') }} className="px-2.5 md:px-3 py-1 bg-maroon text-white text-[10px] md:text-xs rounded-lg hover:bg-maroon-dark">
               {isMobile ? 'Edit Contact' : 'Edit Contact Info'}
@@ -556,14 +559,15 @@ export default function MyDwar() {
                 </tr>
               </thead>
               <tbody>
-                {daysInWeek.map(dayNum => {
-                  const info = getDayInfo(dayNum)
+                {daysInWeek.map(dateObj => {
+                  const dayNum = dateObj.getDate()
                   const entry = getEntryForDay(dayNum)
-                  const isToday = dayNum === currentDate.getDate() && month === currentMonthName && parseInt(year) === currentDate.getFullYear()
+                  const isToday = dateObj.toDateString() === currentDate.toDateString()
+                  const label = getDayLabel(dateObj)
                   
                   return (
-                    <tr key={dayNum} className={`border-b border-gray-100 ${isToday ? 'bg-maroon/5' : ''}`}>
-                      <td className="px-2 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-medium text-gray-900 whitespace-nowrap">{info.label}</td>
+                    <tr key={`${dateObj.getFullYear()}-${dateObj.getMonth()}-${dayNum}`} className={`border-b border-gray-100 ${isToday ? 'bg-maroon/5' : ''}`}>
+                      <td className="px-2 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-medium text-gray-900 whitespace-nowrap">{label}</td>
                       <td className="px-2 md:px-4 py-1.5 md:py-2 text-xs md:text-sm text-gray-600">{entry?.time_in || '—'}</td>
                       <td className="px-2 md:px-4 py-1.5 md:py-2 text-xs md:text-sm text-gray-600">{entry?.time_out || '—'}</td>
                       <td className="px-2 md:px-4 py-1.5 md:py-2 text-xs md:text-sm text-gray-600 max-w-[120px] md:max-w-[200px] truncate" title={entry?.work_schedule}>{entry?.work_schedule || '—'}</td>
@@ -658,15 +662,15 @@ export default function MyDwar() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Start Month</label>
-                  <select value={printStartMonth} onChange={e => setPrintStartMonth(e.target.value)} className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg bg-white outline-none">
-                    {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Start Quarter</label>
+                  <select value={printStartQuarter} onChange={e => { setPrintStartQuarter(e.target.value); setPrintStartWeek(1) }} className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg bg-white outline-none">
+                    {QUARTERS.map(q => <option key={q} value={q}>{q}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">End Month</label>
-                  <select value={printEndMonth} onChange={e => setPrintEndMonth(e.target.value)} className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg bg-white outline-none">
-                    {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">End Quarter</label>
+                  <select value={printEndQuarter} onChange={e => { setPrintEndQuarter(e.target.value); const maxW = getWeeksInQuarter(e.target.value, printYear); setPrintEndWeek(maxW) }} className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg bg-white outline-none">
+                    {QUARTERS.map(q => <option key={q} value={q}>{q}</option>)}
                   </select>
                 </div>
               </div>
@@ -675,13 +679,13 @@ export default function MyDwar() {
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Start Week</label>
                   <select value={printStartWeek} onChange={e => setPrintStartWeek(parseInt(e.target.value))} className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg bg-white outline-none">
-                    {[1,2,3,4,5].map(w => <option key={w} value={w}>Week {w}</option>)}
+                    {Array.from({ length: getWeeksInQuarter(printStartQuarter, printYear) }).map((_, i) => <option key={i+1} value={i+1}>Week {i+1}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">End Week</label>
                   <select value={printEndWeek} onChange={e => setPrintEndWeek(parseInt(e.target.value))} className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg bg-white outline-none">
-                    {[1,2,3,4,5].map(w => <option key={w} value={w}>Week {w}</option>)}
+                    {Array.from({ length: getWeeksInQuarter(printEndQuarter, printYear) }).map((_, i) => <option key={i+1} value={i+1}>Week {i+1}</option>)}
                   </select>
                 </div>
               </div>
@@ -715,7 +719,15 @@ export default function MyDwar() {
           }} onClick={e => e.stopPropagation()}>
             {isMobile && <div style={{ width: '40px', height: '4px', background: '#E5E5E5', borderRadius: '2px', margin: '0 auto 0.75rem' }} />}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 style={{ fontSize: '0.95rem', color: '#800000', margin: 0 }}>Day {editModal.day} — {month} {year}</h3>
+              <h3 style={{ fontSize: '0.95rem', color: '#800000', margin: 0 }}>
+                {(() => {
+                  const dateObj = daysInWeek.find(d => d.getDate() === editModal.day)
+                  if (dateObj) {
+                    return getDayLabel(dateObj) + ' — ' + quarter + ' ' + year
+                  }
+                  return 'Day ' + editModal.day + ' — ' + quarter + ' ' + year
+                })()}
+              </h3>
               <button onClick={() => setEditModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#999' }}>
                 <X size={20} />
               </button>
