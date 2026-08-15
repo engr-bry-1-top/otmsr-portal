@@ -89,16 +89,52 @@ export default function POTracker() {
               const itemId = `${po}-${idx}`
               const facility = (row[4] || 'Unknown').toString().trim()
               const status = (row[20] || 'PENDING').toString().trim()
+              const equipment = (row[5] || '').toString().trim()
+              const model = (row[7] || '').toString().trim()
+              const brand = (row[8] || '').toString().trim()
+              const qty = (row[9] || '').toString().trim()
+              const category = (row[6] || '').toString().trim()
               const isOpen = expanded[itemId]
 
               return (
                 <div key={itemId} className="border-b border-gray-50 last:border-b-0">
-                  <div onClick={() => toggleExpand(itemId)} className="px-4 md:px-6 py-3 flex items-center justify-between cursor-pointer hover:bg-gray-50">
-                    <div className="flex-1 min-w-0 mr-2">
-                      <p className="text-sm font-medium text-gray-800 truncate">{facility}</p>
-                      <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] md:text-xs font-semibold mt-1 ${getStatusClass(status)}`}>{status}</span>
+                  <div onClick={() => toggleExpand(itemId)} className="px-4 md:px-6 py-3 cursor-pointer hover:bg-gray-50">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        {/* Facility Name */}
+                        <p className="text-sm font-medium text-gray-800 truncate">{facility}</p>
+                        
+                        {/* Equipment Info - Visible without expanding */}
+                        <div className="flex flex-wrap items-center gap-1.5 md:gap-2 mt-1.5">
+                          {equipment && (
+                            <span className="text-[10px] md:text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md">
+                              <strong>Equipment:</strong> {equipment}
+                            </span>
+                          )}
+                          {brand && (
+                            <span className="text-[10px] md:text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md">
+                              <strong>Brand:</strong> {brand}
+                            </span>
+                          )}
+                          {model && (
+                            <span className="text-[10px] md:text-xs text-gray-600 bg-maroon/5 px-2 py-0.5 rounded-md">
+                              <strong>Model:</strong> {model}
+                            </span>
+                          )}
+                          {qty && (
+                            <span className="text-[10px] md:text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md">
+                              <strong>QTY:</strong> {qty}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Status */}
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] md:text-xs font-semibold mt-1.5 ${getStatusClass(status)}`}>{status}</span>
+                      </div>
+                      <div className="flex-shrink-0 mt-1">
+                        {isOpen ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />}
+                      </div>
                     </div>
-                    {isOpen ? <ChevronDown size={16} className="text-gray-400 flex-shrink-0" /> : <ChevronRight size={16} className="text-gray-400 flex-shrink-0" />}
                   </div>
 
                   {isOpen && (
