@@ -34,14 +34,13 @@ export default function Layout({ children }) {
 
   useEffect(() => {
     if (user?.username) {
-      // Prompt for notification permission after 3 seconds
       const timer = setTimeout(() => {
         if (window.OneSignalDeferred) {
           window.OneSignalDeferred.push(async function(OneSignal) {
             try {
               const isSubscribed = await OneSignal.User.PushSubscription.optedIn
               if (!isSubscribed) {
-                OneSignal.showSlidedownPrompt()
+                OneSignal.Notifications.requestPermission()
               }
             } catch (err) { console.error(err) }
           })
