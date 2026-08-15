@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Send, Trash2, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
@@ -9,6 +10,9 @@ const ALL_ENGINEER_USERNAMES = [
 ]
 
 export default function AnnouncementManager() {
+  const navigate = useNavigate()
+  const [user, setUser] = useState(null)
+  const [isAdmin, setIsAdmin] = useState(false)
   const [title, setTitle] = useState('')
   const [message, setMessage] = useState('')
   const [link, setLink] = useState('/dashboard')
@@ -26,8 +30,20 @@ export default function AnnouncementManager() {
   }, [])
 
   useEffect(() => {
+    const stored = localStorage.getItem('otmsr_user')
+    if (!stored) { navigate('/'); return }
+    const userData = JSON.parse(stored)
+    setUser(userData)
+    const admin = userData.role === 'admin' || ADMIN_USERNAMES.includes(userData.username)
+    setIsAdmin(admin)
+    
+    if (!admin) {
+      navigate('/dashboard')
+      return
+    }
+    
     fetchAnnouncements()
-  }, [])
+  }, [navigate])
 
   const fetchAnnouncements = async () => {
     setLoading(true)
@@ -85,6 +101,8 @@ export default function AnnouncementManager() {
       fetchAnnouncements()
     } catch (err) { console.error(err) }
   }
+
+  if (!isAdmin) return null
 
   return (
     <div>

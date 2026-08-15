@@ -101,9 +101,13 @@ export default function Layout({ children }) {
     }, 700)
   }
 
+  const ADMIN_USERNAMES = ['rob.onetop', 'josh.onetop', 'bry.onetop']
+
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/announcements', label: 'Announcements', icon: Megaphone },
+    ...(user?.role === 'admin' || ADMIN_USERNAMES.includes(user?.username)
+      ? [{ path: '/announcements', label: 'Announcements', icon: Megaphone }]
+      : []),
     { path: '/deployment', label: 'Deployment', icon: BarChart3 },
     { path: '/team-performance', label: 'Team Performance', icon: TrendingUp },
     { path: '/card/edit', label: 'Calling Card', icon: CreditCard },
