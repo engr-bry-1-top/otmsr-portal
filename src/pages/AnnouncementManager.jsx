@@ -88,6 +88,7 @@ export default function AnnouncementManager() {
       try {
         const response = await fetch(ANNOUNCEMENT_GAS_API, {
           method: 'POST',
+          mode: 'no-cors',
           headers: { 'Content-Type': 'text/plain' },
           body: JSON.stringify({
             action: 'send_announcement',
@@ -96,8 +97,7 @@ export default function AnnouncementManager() {
             link: link || '/dashboard',
           }),
         })
-        const result = await response.text()
-        console.log('GAS response:', result)
+        console.log('GAS request sent')
       } catch (gasErr) {
         console.error('GAS call failed:', gasErr)
       }
