@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, Lock, Shield, Scale, User, CheckCircle } from 'lucide-react'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -12,6 +12,7 @@ export default function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [loggingIn, setLoggingIn] = useState(false)
+  const [showPrivacy, setShowPrivacy] = useState(true)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -109,6 +110,10 @@ export default function Login() {
           0%, 100% { opacity: 0.5; letter-spacing: 2px; }
           50% { opacity: 1; letter-spacing: 4px; }
         }
+        @keyframes modalIn {
+          from { opacity: 0; transform: scale(0.9) translateY(20px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
         .anim-fade-1 { animation: fadeSlideUp 0.6s ease forwards; opacity: 0; }
         .anim-fade-2 { animation: fadeSlideUp 0.6s ease 0.15s forwards; opacity: 0; }
         .anim-fade-3 { animation: fadeSlideUp 0.6s ease 0.3s forwards; opacity: 0; }
@@ -118,7 +123,100 @@ export default function Login() {
         .anim-spin { animation: spin 0.8s linear infinite; }
         .anim-logo-pulse { animation: logoPulse 3s ease-in-out infinite; }
         .anim-text-glow { animation: textGlow 3s ease-in-out infinite; }
+        .anim-modal-in { animation: modalIn 0.3s ease forwards; }
+        
+        .privacy-modal::-webkit-scrollbar { display: none; }
+        .privacy-modal { scrollbar-width: none; -ms-overflow-style: none; }
       `}</style>
+
+      {/* Data Privacy Modal */}
+      {showPrivacy && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 10000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '1rem' }}>
+          <div className="privacy-modal anim-modal-in" style={{ background: '#fff', borderRadius: '20px', padding: 0, maxWidth: '700px', width: '100%', maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 25px 60px rgba(0,0,0,0.35)' }}>
+            {/* Modal Header */}
+            <div style={{ background: 'linear-gradient(135deg, #800000 0%, #4A0000 100%)', padding: '2rem 2rem 1.5rem', textAlign: 'center', borderRadius: '20px 20px 0 0' }}>
+              <div style={{ width: '56px', height: '56px', background: 'rgba(255,255,255,0.15)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.75rem' }}>
+                <Shield size={28} className="text-white" />
+              </div>
+              <h2 style={{ fontSize: '1.15rem', color: '#fff', margin: 0 }}>Data Privacy & Intellectual Property</h2>
+              <p style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.7)', marginTop: '0.25rem' }}>One Top Medical Systems Resources OPC</p>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '1.5rem 2rem', fontSize: '0.75rem', color: '#525252', lineHeight: '1.6' }}>
+              <p style={{ marginBottom: '1rem', textAlign: 'center' }}>
+                In compliance with <strong>RA 10173</strong> and <strong>RA 8293</strong>, this portal and all its contents are protected.
+              </p>
+              
+              {/* RA 10173 */}
+              <div style={{ background: '#FDF7F7', border: '1px solid #F5D0D0', borderRadius: '12px', padding: '1rem', marginBottom: '0.75rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <Lock size={16} className="text-maroon" />
+                  <p style={{ fontWeight: 700, color: '#800000', fontSize: '0.8rem' }}>Data Privacy Act of 2012 (RA 10173)</p>
+                </div>
+                <p><strong>Information We Collect:</strong></p>
+                <ul style={{ paddingLeft: '1.25rem', marginBottom: '0.5rem', fontSize: '0.7rem' }}>
+                  <li>Full name, contact number, and email address</li>
+                  <li>Work schedules and activity reports</li>
+                  <li>Login credentials and usage data</li>
+                </ul>
+                <p><strong>How We Use Your Information:</strong></p>
+                <ul style={{ paddingLeft: '1.25rem', marginBottom: '0.5rem', fontSize: '0.7rem' }}>
+                  <li>Internal company operations and work management</li>
+                  <li>Communication of announcements and notifications</li>
+                  <li>Performance tracking and reporting</li>
+                </ul>
+                <p style={{ marginBottom: '0.5rem', fontSize: '0.7rem' }}>
+                  We do not share, sell, or disclose your personal information to unauthorized third parties.
+                </p>
+                <p style={{ marginBottom: 0, fontWeight: 700, color: '#B91C1C', fontSize: '0.7rem', background: '#FEF2F2', padding: '0.5rem', borderRadius: '8px' }}>
+                  ⚠️ PENALTY: 1 to 7 years imprisonment | ₱100,000 to ₱5,000,000 fine
+                </p>
+              </div>
+              
+              {/* RA 8293 */}
+              <div style={{ background: '#FFF8E1', border: '1px solid #FDE68A', borderRadius: '12px', padding: '1rem', marginBottom: '0.75rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <Scale size={16} className="text-amber-600" />
+                  <p style={{ fontWeight: 700, color: '#B45309', fontSize: '0.8rem' }}>Intellectual Property Code (RA 8293)</p>
+                </div>
+                <p style={{ marginBottom: '0.5rem', fontSize: '0.7rem' }}>
+                  All content within this portal, including source code, UI designs, trade secrets, business processes, and company data are the exclusive property of <strong>One Top Medical Systems Resources OPC</strong>.
+                </p>
+                <p style={{ marginBottom: 0, fontWeight: 700, color: '#B45309', fontSize: '0.7rem', background: '#FFFDF0', padding: '0.5rem', borderRadius: '8px' }}>
+                  ⚠️ PENALTY: 1 to 9 years imprisonment | ₱50,000 to ₱1,500,000 fine
+                </p>
+              </div>
+              
+              {/* User Responsibilities */}
+              <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '12px', padding: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <User size={16} className="text-blue-600" />
+                  <p style={{ fontWeight: 700, color: '#1D4ED8', fontSize: '0.8rem' }}>User Responsibilities</p>
+                </div>
+                <ul style={{ paddingLeft: '1.25rem', marginBottom: 0, fontSize: '0.7rem' }}>
+                  <li>Do not share your login credentials</li>
+                  <li>Do not copy or distribute portal content without authorization</li>
+                  <li>Do not access data outside your authorized scope</li>
+                  <li>Report security concerns immediately</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{ padding: '1rem 2rem 1.5rem', borderTop: '1px solid #f0f0f0' }}>
+              <button 
+                onClick={() => setShowPrivacy(false)} 
+                style={{ width: '100%', padding: '0.85rem', background: '#800000', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', transition: 'all 0.2s' }}
+                onMouseEnter={e => e.currentTarget.style.background = '#4A0000'}
+                onMouseLeave={e => e.currentTarget.style.background = '#800000'}
+              >
+                <CheckCircle size={18} /> I Agree and Understand
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loggingIn && (
         <div className="fixed inset-0 z-50 bg-white flex flex-col items-center justify-center gap-6">

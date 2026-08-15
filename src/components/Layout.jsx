@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
-import { LayoutDashboard, CreditCard, BookOpen, FileText, ShoppingCart, Settings, LogOut, Menu, X, ChevronLeft, BarChart3, TrendingUp, Search, ClipboardCheck, Calendar, Headset, Star, ClipboardList, Bell, Megaphone } from 'lucide-react'
+import { LayoutDashboard, CreditCard, BookOpen, FileText, ShoppingCart, Settings, LogOut, Menu, X, ChevronLeft, BarChart3, TrendingUp, Search, ClipboardCheck, Calendar, Headset, Star, ClipboardList, Bell, Megaphone, HelpCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 export default function Layout({ children }) {
@@ -230,8 +230,17 @@ export default function Layout({ children }) {
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
           <div className="hidden lg:block" />
-
+          
           <div className="flex items-center gap-1.5 md:gap-2 ml-auto">
+            {/* Help Button */}
+            <button 
+              onClick={() => navigate('/guide')} 
+              className="flex items-center justify-center w-9 h-9 rounded-lg hover:bg-gray-50 text-gray-500 hover:text-maroon transition-colors"
+              title="Help & Guide"
+            >
+              <HelpCircle size={18} />
+            </button>
+
             {/* Notification Bell */}
             <div className="relative">
               <button 
