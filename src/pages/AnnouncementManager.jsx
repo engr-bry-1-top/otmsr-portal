@@ -9,6 +9,10 @@ const ALL_ENGINEER_USERNAMES = [
   'keith.onetop', 'josh.onetop', 'rey.onetop', 'gerson.onetop', 'bry.onetop'
 ]
 
+const ANNOUNCEMENT_GAS_API = 'https://script.google.com/macros/s/AKfycbw4F_XE7tbum0mAkMDlRXRw7AdAkDDVXQBF8TDOq0VhaDigq_vcI9rDkY6gWrAWPCnW/exec'
+
+const ONESIGNAL_APP_ID = '12372b6e-56ce-4515-9f75-c157fbd6c07b'
+
 export default function AnnouncementManager() {
   const navigate = useNavigate()
   const [user, setUser] = useState(null)
@@ -70,6 +74,7 @@ export default function AnnouncementManager() {
     setSentMessage(null)
     
     try {
+      // 1. Save to Supabase
       for (const username of ALL_ENGINEER_USERNAMES) {
         await supabase.from('announcements').insert({
           username: username,
@@ -79,6 +84,36 @@ export default function AnnouncementManager() {
           is_read: false,
           created_at: new Date().toISOString(),
         })
+      }
+      
+      // 2. Send email via GAS
+      try {
+        const emailResponse = await fetch(ANNOUNCEMENT_GAS_API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({
+            action: 'send_announcement',
+            title: title.trim(),
+            message: message.trim(),
+          }),
+        })
+        const emailResult = await emailResponse.text()
+        console.log('GAS email response:', emailResult)
+      } catch (emailErr) {
+        console.error('Email sending failed:', emailErr)
+      }
+      
+      // 3. Send push notification via OneSignal
+      try {
+        if (window.OneSignalDeferred) {
+          window.OneSignalDeferred.push(function(OneSignal) {
+            OneSignal.User.PushSubscription.optedIn.then(function(isSubscribed) {
+              console.log('Push subscription status:', isSubscribed)
+            })
+          })
+        }
+      } catch (pushErr) {
+        console.error('Push notification check failed:', pushErr)
       }
       
       setSentMessage({ type: 'success', text: 'Announcement sent to all engineers!' })
