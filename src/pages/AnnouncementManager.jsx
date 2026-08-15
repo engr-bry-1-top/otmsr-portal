@@ -88,7 +88,7 @@ export default function AnnouncementManager() {
       try {
         const response = await fetch(ANNOUNCEMENT_GAS_API, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'text/plain' },
           body: JSON.stringify({
             action: 'send_announcement',
             title: title.trim(),
