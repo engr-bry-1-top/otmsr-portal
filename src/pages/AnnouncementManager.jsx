@@ -10,8 +10,6 @@ const ALL_ENGINEER_USERNAMES = [
 ]
 
 const ANNOUNCEMENT_GAS_API = import.meta.env.VITE_ANNOUNCEMENT_GAS_API
-const ONESIGNAL_APP_ID = import.meta.env.VITE_ONESIGNAL_APP_ID
-const ONESIGNAL_REST_API_KEY = import.meta.env.VITE_ONESIGNAL_REST_API_KEY
 
 export default function AnnouncementManager() {
   const navigate = useNavigate()
@@ -86,7 +84,7 @@ export default function AnnouncementManager() {
         })
       }
       
-      // 2. Send email via GAS
+      // 2. Send email + push via GAS
       try {
         const emailResponse = await fetch(ANNOUNCEMENT_GAS_API, {
           method: 'POST',
@@ -95,34 +93,13 @@ export default function AnnouncementManager() {
             action: 'send_announcement',
             title: title.trim(),
             message: message.trim(),
+            link: link || '/dashboard',
           }),
         })
         const emailResult = await emailResponse.text()
-        console.log('GAS email response:', emailResult)
-      } catch (emailErr) {
-        console.error('Email sending failed:', emailErr)
-      }
-      
-      // 3. Send push notification via OneSignal REST API
-      try {
-        const pushResponse = await fetch('https://api.onesignal.com/notifications?c=push', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${ONESIGNAL_REST_API_KEY}`,
-          },
-          body: JSON.stringify({
-            app_id: ONESIGNAL_APP_ID,
-            included_segments: ['Subscribed Users'],
-            headings: { en: title.trim() },
-            contents: { en: message.trim().substring(0, 100) },
-            url: `https://engineering-services-otmsr-opc-portal.vercel.app${link || '/dashboard'}`,
-          })
-        })
-        const pushResult = await pushResponse.json()
-        console.log('Push notification response:', pushResult)
-      } catch (pushErr) {
-        console.error('Push notification failed:', pushErr)
+        console.log('GAS response:', emailResult)
+      } catch (gasErr) {
+        console.error('GAS call failed:', gasErr)
       }
       
       setSentMessage({ type: 'success', text: 'Announcement sent to all engineers!' })
