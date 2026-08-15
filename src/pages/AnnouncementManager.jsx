@@ -9,12 +9,7 @@ const ALL_ENGINEER_USERNAMES = [
   'keith.onetop', 'josh.onetop', 'rey.onetop', 'gerson.onetop', 'bry.onetop'
 ]
 
-// Hardcode the GAS API URL as fallback
-const ANNOUNCEMENT_GAS_API = import.meta.env.VITE_ANNOUNCEMENT_GAS_API || 
-  'https://script.google.com/macros/s/AKfycbw4F_XE7tbum0mAkMDlRXRw7AdAkDDVXQBF8TDOq0VhaDigq_vcI9rDkY6gWrAWPCnW/exec'
-
-const ONESIGNAL_APP_ID = import.meta.env.VITE_ONESIGNAL_APP_ID
-const ONESIGNAL_REST_API_KEY = import.meta.env.VITE_ONESIGNAL_REST_API_KEY
+const ANNOUNCEMENT_GAS_API = import.meta.env.VITE_ANNOUNCEMENT_GAS_API
 
 export default function AnnouncementManager() {
   const navigate = useNavigate()
@@ -62,9 +57,7 @@ export default function AnnouncementManager() {
         .limit(50)
       
       setAnnouncements(data || [])
-    } catch (err) { 
-      console.error('Error fetching announcements:', err) 
-    }
+    } catch (err) { console.error(err) }
     setLoading(false)
   }
 
@@ -78,90 +71,35 @@ export default function AnnouncementManager() {
     setSending(true)
     setSentMessage(null)
     
-    console.log('=== Starting Announcement Send ===')
-    console.log('Title:', title)
-    console.log('Message:', message)
-    console.log('Link:', link)
-    console.log('GAS API URL:', ANNOUNCEMENT_GAS_API)
-    
     try {
       // 1. Save to Supabase
-      console.log('Saving to Supabase...')
       for (const username of ALL_ENGINEER_USERNAMES) {
-        const { data, error } = await supabase.from('announcements').insert({
+        await supabase.from('announcements').insert({
           username: username,
           title: title.trim(),
           message: message.trim(),
           link: link || '/dashboard',
           is_read: false,
           created_at: new Date().toISOString(),
-        }).select()
-        
-        if (error) {
-          console.error(`Error inserting for ${username}:`, error)
-        } else {
-          console.log(`Inserted for ${username}`)
-        }
+        })
       }
       
-      // 2. Send email via GAS
-      console.log('Attempting to send emails via GAS...')
+      // 2. Send email + push via GAS
       try {
-        const requestBody = JSON.stringify({
-          action: 'send_announcement',
-          title: title.trim(),
-          message: message.trim(),
-        })
-        
-        console.log('Request body:', requestBody)
-        
-        const emailResponse = await fetch(ANNOUNCEMENT_GAS_API, {
+        const response = await fetch(ANNOUNCEMENT_GAS_API, {
           method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-          },
-          body: requestBody,
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({
+            action: 'send_announcement',
+            title: title.trim(),
+            message: message.trim(),
+            link: link || '/dashboard',
+          }),
         })
-        
-        console.log('GAS Response status:', emailResponse.status)
-        console.log('GAS Response ok:', emailResponse.ok)
-        
-        const emailResult = await emailResponse.text()
-        console.log('GAS email response:', emailResult)
-        
-      } catch (emailErr) {
-        console.error('Email sending failed:', emailErr)
-        console.error('Email error details:', {
-          message: emailErr.message,
-          stack: emailErr.stack
-        })
-      }
-      
-      // 3. Send push notification via OneSignal REST API
-      if (ONESIGNAL_APP_ID && ONESIGNAL_REST_API_KEY) {
-        console.log('Sending push notification via OneSignal...')
-        try {
-          const pushResponse = await fetch('https://api.onesignal.com/notifications?c=push', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${ONESIGNAL_REST_API_KEY}`,
-            },
-            body: JSON.stringify({
-              app_id: ONESIGNAL_APP_ID,
-              included_segments: ['Subscribed Users'],
-              headings: { en: title.trim() },
-              contents: { en: message.trim().substring(0, 100) },
-              url: `https://engineering-services-otmsr-opc-portal.vercel.app${link || '/dashboard'}`,
-            })
-          })
-          const pushResult = await pushResponse.json()
-          console.log('Push notification response:', pushResult)
-        } catch (pushErr) {
-          console.error('Push notification failed:', pushErr)
-        }
-      } else {
-        console.log('OneSignal credentials not found, skipping push notification')
+        const result = await response.text()
+        console.log('GAS response:', result)
+      } catch (gasErr) {
+        console.error('GAS call failed:', gasErr)
       }
       
       setSentMessage({ type: 'success', text: 'Announcement sent to all engineers!' })
@@ -171,28 +109,18 @@ export default function AnnouncementManager() {
       setMessage('')
       setLink('/dashboard')
       fetchAnnouncements()
-      
     } catch (err) {
-      console.error('Main error in sendAnnouncement:', err)
+      console.error(err)
       setSentMessage({ type: 'error', text: 'Failed to send: ' + err.message })
     }
-    
     setSending(false)
-    console.log('=== Announcement Send Complete ===')
   }
 
   const deleteAnnouncement = async (id) => {
     try {
-      const { error } = await supabase.from('announcements').delete().eq('id', id)
-      if (error) {
-        console.error('Error deleting announcement:', error)
-      } else {
-        console.log('Announcement deleted successfully')
-        fetchAnnouncements()
-      }
-    } catch (err) { 
-      console.error('Delete error:', err) 
-    }
+      await supabase.from('announcements').delete().eq('id', id)
+      fetchAnnouncements()
+    } catch (err) { console.error(err) }
   }
 
   if (!isAdmin) return null
@@ -276,9 +204,7 @@ export default function AnnouncementManager() {
         </div>
         
         {loading ? (
-          <div className="flex justify-center py-10">
-            <div className="w-8 h-8 border-2 border-gray-200 border-t-maroon rounded-full animate-spin" />
-          </div>
+          <div className="flex justify-center py-10"><div className="w-8 h-8 border-2 border-gray-200 border-t-maroon rounded-full animate-spin" /></div>
         ) : announcements.length === 0 ? (
           <div className="px-4 py-10 text-center text-gray-400 text-sm">No announcements yet</div>
         ) : (
@@ -289,13 +215,7 @@ export default function AnnouncementManager() {
                   <p className="text-sm font-medium text-gray-900">{ann.title}</p>
                   <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{ann.message}</p>
                   <p className="text-[10px] text-gray-400 mt-1">
-                    {new Date(ann.created_at).toLocaleString('en-US', { 
-                      month: 'short', 
-                      day: 'numeric', 
-                      year: 'numeric', 
-                      hour: '2-digit', 
-                      minute: '2-digit' 
-                    })}
+                    {new Date(ann.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
                 <button 
