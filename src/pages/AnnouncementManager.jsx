@@ -12,6 +12,7 @@ const ALL_ENGINEER_USERNAMES = [
 const ANNOUNCEMENT_GAS_API = 'https://script.google.com/macros/s/AKfycbw4F_XE7tbum0mAkMDlRXRw7AdAkDDVXQBF8TDOq0VhaDigq_vcI9rDkY6gWrAWPCnW/exec'
 
 const ONESIGNAL_APP_ID = '12372b6e-56ce-4515-9f75-c157fbd6c07b'
+const ONESIGNAL_REST_API_KEY = 'os_v2_app_ci3sw3swzzcrlh3vyfl7xvwapmcu6jpehrrua7uwuc3olm7xdt3zgzl4fpze42jo24rjsbetiz3x3zzxvo2uho7q6zo67nvngpehkla'
 
 export default function AnnouncementManager() {
   const navigate = useNavigate()
@@ -103,17 +104,26 @@ export default function AnnouncementManager() {
         console.error('Email sending failed:', emailErr)
       }
       
-      // 3. Send push notification via OneSignal
+      // 3. Send push notification via OneSignal REST API
       try {
-        if (window.OneSignalDeferred) {
-          window.OneSignalDeferred.push(function(OneSignal) {
-            OneSignal.User.PushSubscription.optedIn.then(function(isSubscribed) {
-              console.log('Push subscription status:', isSubscribed)
-            })
+        const pushResponse = await fetch('https://api.onesignal.com/notifications?c=push', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${ONESIGNAL_REST_API_KEY}`,
+          },
+          body: JSON.stringify({
+            app_id: ONESIGNAL_APP_ID,
+            included_segments: ['Subscribed Users'],
+            headings: { en: title.trim() },
+            contents: { en: message.trim().substring(0, 100) },
+            url: `https://engineering-services-otmsr-opc-portal.vercel.app${link || '/dashboard'}`,
           })
-        }
+        })
+        const pushResult = await pushResponse.json()
+        console.log('Push notification response:', pushResult)
       } catch (pushErr) {
-        console.error('Push notification check failed:', pushErr)
+        console.error('Push notification failed:', pushErr)
       }
       
       setSentMessage({ type: 'success', text: 'Announcement sent to all engineers!' })
