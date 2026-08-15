@@ -9,10 +9,9 @@ const ALL_ENGINEER_USERNAMES = [
   'keith.onetop', 'josh.onetop', 'rey.onetop', 'gerson.onetop', 'bry.onetop'
 ]
 
-const ANNOUNCEMENT_GAS_API = 'https://script.google.com/macros/s/AKfycbw4F_XE7tbum0mAkMDlRXRw7AdAkDDVXQBF8TDOq0VhaDigq_vcI9rDkY6gWrAWPCnW/exec'
-
-const ONESIGNAL_APP_ID = '12372b6e-56ce-4515-9f75-c157fbd6c07b'
-const ONESIGNAL_REST_API_KEY = 'os_v2_app_ci3sw3swzzcrlh3vyfl7xvwapmcu6jpehrrua7uwuc3olm7xdt3zgzl4fpze42jo24rjsbetiz3x3zzxvo2uho7q6zo67nvngpehkla'
+const ANNOUNCEMENT_GAS_API = import.meta.env.VITE_ANNOUNCEMENT_GAS_API
+const ONESIGNAL_APP_ID = import.meta.env.VITE_ONESIGNAL_APP_ID
+const ONESIGNAL_REST_API_KEY = import.meta.env.VITE_ONESIGNAL_REST_API_KEY
 
 export default function AnnouncementManager() {
   const navigate = useNavigate()
