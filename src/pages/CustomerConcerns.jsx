@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Search, X } from 'lucide-react'
 import emailjs from '@emailjs/browser'
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbwhqFi9pK9uzhDCqLc5mVhpokaA9HWB9f1HzQ5wRErTLTK181U4h0IHsqLw-6CWalU/exec'
+const API_URL = 'https://script.google.com/macros/s/AKfycbyOUjE1U2krkdVE9RNztxj7iuabrpUDAySCViFNK0UJ1tX2S8aDLAIy1iNKMvO4e6iN/exec'
 
 const EMAILJS_SERVICE_ID = 'service_ebdrpxv'
 const EMAILJS_ACK_TEMPLATE_ID = 'template_mqq1xa3'
@@ -73,7 +73,6 @@ export default function CustomerConcerns() {
     setConcerns(prev => prev.map(c => c.rowIndex === rowIndex ? { ...c, status: newStatus } : c))
     if (selected?.rowIndex === rowIndex) setSelected(prev => ({ ...prev, status: newStatus }))
     
-    // Send email to customer
     const concern = concerns.find(c => c.rowIndex === rowIndex)
     if (concern) {
       await sendStatusUpdateEmail(concern, newStatus)
