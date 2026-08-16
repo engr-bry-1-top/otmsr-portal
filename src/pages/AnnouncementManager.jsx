@@ -9,8 +9,6 @@ const ALL_ENGINEER_USERNAMES = [
   'keith.onetop', 'josh.onetop', 'rey.onetop', 'gerson.onetop', 'bry.onetop'
 ]
 
-const ANNOUNCEMENT_GAS_API = import.meta.env.VITE_ANNOUNCEMENT_GAS_API
-
 export default function AnnouncementManager() {
   const navigate = useNavigate()
   const [user, setUser] = useState(null)
@@ -72,7 +70,7 @@ export default function AnnouncementManager() {
     setSentMessage(null)
     
     try {
-      // 1. Save to Supabase
+      // Save to Supabase for all engineers
       for (const username of ALL_ENGINEER_USERNAMES) {
         await supabase.from('announcements').insert({
           username: username,
@@ -82,23 +80,6 @@ export default function AnnouncementManager() {
           is_read: false,
           created_at: new Date().toISOString(),
         })
-      }
-      
-      // 2. Send email + push via GAS
-      try {
-        const response = await fetch(ANNOUNCEMENT_GAS_API, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify({
-            action: 'send_announcement',
-            title: title.trim(),
-            message: message.trim(),
-            link: link || '/dashboard',
-          }),
-        })
-        console.log('GAS request sent')
-      } catch (gasErr) {
-        console.error('GAS call failed:', gasErr)
       }
       
       setSentMessage({ type: 'success', text: 'Announcement sent to all engineers!' })

@@ -69,7 +69,6 @@ export default function Layout({ children }) {
         .from('announcements')
         .select('*')
         .eq('username', user.username)
-        .eq('is_read', false)
         .order('created_at', { ascending: false })
         .limit(10)
       
