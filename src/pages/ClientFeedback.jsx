@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Star, TrendingUp, Users, Building2 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbwhqFi9pK9uzhDCqLc5mVhpokaA9HWB9f1HzQ5wRErTLTK181U4h0IHsqLw-6CWalU/exec'
+const API_URL = 'https://script.google.com/macros/s/AKfycbzzSO6_jF7bXPhI9tY_jRblW6DpnT6w-72NzZFtpa3yQVN9RQxNvOXCmJSFh2LODyT1cg/exec'
 
 const COLORS = ['#15803D', '#1D4ED8', '#B45309', '#B91C1C', '#7F1D1D', '#800000']
 const WEIGHTS = { 'Very Satisfied': 1.0, 'Satisfied': 0.75, 'Neutral': 0.50, 'Unsatisfied': 0.25, 'Very Unsatisfied': 0.0 }
@@ -126,11 +126,12 @@ export default function ClientFeedback() {
           <h3 className="text-sm font-semibold text-gray-700">Recent Feedback</h3>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[650px]">
+          <table className="w-full min-w-[750px]">
             <thead>
               <tr className="bg-gray-50 text-left">
                 <th className="px-3 md:px-4 py-2 md:py-3 text-xs font-semibold text-gray-500 uppercase">Date</th>
                 <th className="px-3 md:px-4 py-2 md:py-3 text-xs font-semibold text-gray-500 uppercase">Customer</th>
+                <th className="px-3 md:px-4 py-2 md:py-3 text-xs font-semibold text-gray-500 uppercase">Email</th>
                 <th className="px-3 md:px-4 py-2 md:py-3 text-xs font-semibold text-gray-500 uppercase">Facility</th>
                 <th className="px-3 md:px-4 py-2 md:py-3 text-xs font-semibold text-gray-500 uppercase">Engineer</th>
                 <th className="px-3 md:px-4 py-2 md:py-3 text-xs font-semibold text-gray-500 uppercase">Satisfaction</th>
@@ -143,6 +144,7 @@ export default function ClientFeedback() {
                 <tr key={i} className="border-b border-gray-50">
                   <td className="px-3 md:px-4 py-2 md:py-3 text-sm text-gray-500 whitespace-nowrap">{d.timestamp ? new Date(d.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}</td>
                   <td className="px-3 md:px-4 py-2 md:py-3 text-sm text-gray-700">{d.customerName}</td>
+                  <td className="px-3 md:px-4 py-2 md:py-3 text-sm text-gray-500 truncate max-w-[150px]" title={d.email}>{d.email || '—'}</td>
                   <td className="px-3 md:px-4 py-2 md:py-3 text-sm text-gray-700">{d.facility}</td>
                   <td className="px-3 md:px-4 py-2 md:py-3 text-sm text-gray-700">{d.engineer}</td>
                   <td className="px-3 md:px-4 py-2 md:py-3"><span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${getSatClass(d.satisfaction)}`}>{d.satisfaction}</span></td>
@@ -158,7 +160,7 @@ export default function ClientFeedback() {
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={7} className="px-4 py-12 md:py-16 text-center text-gray-400">No feedback records found</td></tr>
+                <tr><td colSpan={8} className="px-4 py-12 md:py-16 text-center text-gray-400">No feedback records found</td></tr>
               )}
             </tbody>
           </table>
