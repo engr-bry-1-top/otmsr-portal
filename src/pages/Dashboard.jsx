@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { CreditCard, BookOpen, FileText, ShoppingCart, BarChart3, TrendingUp, Calendar, Star, Search, Headset, ClipboardCheck, ArrowRight } from 'lucide-react'
+import { CreditCard, BookOpen, ShoppingCart, BarChart3, TrendingUp, Calendar, Star, Search, Headset, ClipboardCheck, ArrowRight } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import AnnouncementModal from '../components/AnnouncementModal'
 
 export default function Dashboard() {
   const navigate = useNavigate()
   const [user, setUser] = useState(null)
-  const [stats, setStats] = useState({ srTotal: 0, srPending: 0, manuals: 0 })
   const [showAnnouncements, setShowAnnouncements] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
 
@@ -23,7 +22,6 @@ export default function Dashboard() {
     if (!stored) { navigate('/'); return }
     const userData = JSON.parse(stored)
     setUser(userData)
-    fetchStats()
     checkAnnouncements(userData)
   }, [navigate])
 
@@ -42,17 +40,6 @@ export default function Dashboard() {
     } catch (err) { console.error(err) }
   }
 
-  const fetchStats = async () => {
-    const { data: sr } = await supabase.from('service_requests').select('status')
-    if (sr) {
-      setStats(prev => ({
-        ...prev,
-        srTotal: sr.length,
-        srPending: sr.filter(r => r.status === 'pending').length,
-      }))
-    }
-  }
-
   if (!user) return null
 
   const quickLinks = [
@@ -60,7 +47,6 @@ export default function Dashboard() {
     { path: '/team-performance', label: 'Team Performance', desc: 'Productivity audit & scoring', icon: TrendingUp, color: 'navy' },
     { path: '/coa', label: 'COA Calendar', desc: 'Calendar of activities', icon: Calendar, color: 'maroon' },
     { path: '/manuals', label: 'Manual Library', desc: 'Installation guides', icon: BookOpen, color: 'navy' },
-    { path: '/service-requests', label: 'Service Requests', desc: `${stats.srTotal} total · ${stats.srPending} pending`, icon: FileText, color: 'maroon' },
     { path: '/card/edit', label: 'Calling Card', desc: 'Digital business card', icon: CreditCard, color: 'navy' },
     { path: '/feedback', label: 'Client Feedback', desc: 'Satisfaction analytics', icon: Star, color: 'maroon' },
     { path: '/po-tracker', label: 'PO Tracker', desc: 'Search purchase orders', icon: Search, color: 'navy' },

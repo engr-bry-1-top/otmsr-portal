@@ -130,7 +130,7 @@ export default function Layout({ children }) {
     { path: '/team-performance', label: 'Team Performance', icon: TrendingUp },
     { path: '/card/edit', label: 'Calling Card', icon: CreditCard },
     { path: '/manuals', label: 'Manual Library', icon: BookOpen },
-    { path: '/service-requests', label: 'Service Requests', icon: FileText },
+    { path: '/srf', label: 'Service Requests', icon: FileText },
     { path: '/po-tracker', label: 'PO Tracker', icon: Search },
     { path: '/pms-tracker', label: 'PMS Tracker', icon: ClipboardCheck },
     { path: '/coa', label: 'COA Calendar', icon: Calendar },

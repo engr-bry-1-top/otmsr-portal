@@ -109,7 +109,7 @@ export default function CallingCard() {
           <p className="text-gray-400" style={{ fontSize: `${4.5*s}px`, margin: 0, whiteSpace: 'nowrap' }}>TEL: (02) 7501 247 / (02) 7799 6805</p>
           <div className="flex flex-col items-center" style={{ gap: `${3*s}px`, marginTop: `${2*s}px` }}>
             <img src="/images/qr.png" alt="" className="bg-white" style={{ width: `${qr}px`, height: `${qr}px`, borderRadius: `${8*s}px`, border: `${1.5*s}px solid #f0f0f0`, padding: `${3*s}px`, objectFit: 'contain' }} />
-            <p className="text-maroon font-bold uppercase tracking-widest" style={{ fontSize: `${11*s}px`, margin: 0 }}>Scan Me</p>
+            <p className="text-maroon font-bold uppercase tracking-widest" style={{ fontSize: `${11*s}px`, margin: 0 }}>Scan the QR for Concern</p>
           </div>
         </div>
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-r from-navy via-maroon to-maroon-light" style={{ height: `${3*s}px` }} />
